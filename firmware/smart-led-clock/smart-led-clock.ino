@@ -1,25 +1,24 @@
 /**
- * Smart LED Clock - Phase 4: WiFi + NTP Synchronization
+ * Smart LED Clock - Phase 5: Simplified Button Control
  * 
- * This version adds network capabilities:
- * - WiFi connection at startup
- * - NTP time synchronization with DS3231
- * - Daily automatic sync at 1:01 AM
- * - WiFi status display on LCD
- * - Network error handling
+ * Single button control with LCD backlight management:
  * 
- * Components active in this phase:
- * - DS3231 RTC module
- * - 12 LED ring (hours)
- * - 60 LED ring (minutes/seconds)
- * - 10 LED bar (air quality)
- * - 20x4 I2C LCD display
- * - 2x DHT22 sensors
- * - MQ135 air quality sensor
- * - WiFi (Arduino UNO R4 WiFi)
+ * Button behavior:
+ * - Click when LCD OFF: Wake LCD (no mode change)
+ * - Click when LCD ON: Cycle through display modes
+ * - Long press: Return to default mode
+ * 
+ * Display modes:
+ * 1. Temperature & Humidity (default)
+ * 2. Feels-like & Dew point
+ * 3. Humidex
+ * 
+ * LCD backlight:
+ * - Auto-off after 30 seconds of inactivity
+ * - Wakes on button press
  * 
  * Author: F. Baillon
- * Version: Phase 4
+ * Version: Phase 5
  * Date: January 2025
  * License: GPL v3.0
  */
@@ -32,10 +31,8 @@
 #include <WiFiS3.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
+#include <OneButton.h>
 
-// WiFi credentials - create secrets.h with:
-// const char* ssid = "YourSSID";
-// const char* pass = "YourPassword";
 #include "secrets.h"
 
 // ==========================================
@@ -47,15 +44,17 @@
 #define PIN_DHT_INDOOR          5
 #define PIN_DHT_OUTDOOR         6
 #define PIN_AIR_QUALITY_SENSOR  A0
+#define PIN_BUTTON              2
 
 // ==========================================
 // CONFIGURATION
 // ==========================================
 #define DHT_TYPE                DHT22
 #define SENSOR_READ_INTERVAL    2000
-#define NTP_SYNC_HOUR           1     // Daily sync at 1 AM
+#define NTP_SYNC_HOUR           1
 #define NTP_SYNC_MINUTE         1
-#define TIME_ZONE_OFFSET        2     // UTC+2 for Paris (summer time CEST)
+#define TIME_ZONE_OFFSET        2
+#define LCD_BACKLIGHT_TIMEOUT   30000  // 30 seconds
 
 // ==========================================
 // LED CONFIGURATION
@@ -85,6 +84,16 @@
 #define LCD_ROWS                4
 
 // ==========================================
+// DISPLAY MODES
+// ==========================================
+enum DisplayMode {
+  MODE_TEMP_HUMIDITY = 0,  // Default
+  MODE_FEELS_LIKE = 1,     // Feels-like & dew point
+  MODE_HUMIDEX = 2,        // Humidex
+  MODE_COUNT = 3           // Total number of modes
+};
+
+// ==========================================
 // GLOBAL OBJECTS
 // ==========================================
 Adafruit_NeoPixel ledsHour(NUM_LEDS_HOUR, PIN_LEDS_HOUR, NEO_GRB + NEO_KHZ800);
@@ -94,6 +103,7 @@ RTC_DS3231 rtc;
 LiquidCrystal_I2C lcd(LCD_I2C_ADDRESS, LCD_COLUMNS, LCD_ROWS);
 DHT dhtIndoor(PIN_DHT_INDOOR, DHT_TYPE);
 DHT dhtOutdoor(PIN_DHT_OUTDOOR, DHT_TYPE);
+OneButton button;
 
 WiFiUDP udp;
 NTPClient timeClient(udp, "pool.ntp.org", TIME_ZONE_OFFSET * 3600, 60000);
@@ -147,6 +157,11 @@ bool wifiConnected = false;
 bool lastNTPSyncSuccess = false;
 unsigned long lastNTPSync = 0;
 
+// Display mode and backlight management
+DisplayMode currentDisplayMode = MODE_TEMP_HUMIDITY;
+bool lcdBacklightOn = true;
+unsigned long lastLCDActivity = 0;
+
 // ==========================================
 // SETUP
 // ==========================================
@@ -154,7 +169,7 @@ void setup() {
   Serial.begin(115200);
   delay(2000);
   
-  Serial.println("=== Smart LED Clock - Phase 4 ===");
+  Serial.println("=== Smart LED Clock - Phase 5 ===");
   Serial.println("Initializing...");
 
   Wire.begin();
@@ -166,6 +181,13 @@ void setup() {
   
   displayStartupMessage("Initializing...");
   delay(1000);
+
+  // Initialize button
+  button.setup(PIN_BUTTON, INPUT_PULLUP, true);
+  button.attachClick(buttonClick);
+  button.attachLongPressStop(buttonLongPress);
+  
+  Serial.println("Button initialized");
 
   ledsHour.begin();
   ledsMinuteSec.begin();
@@ -185,11 +207,10 @@ void setup() {
   delay(1000);
 
   pinMode(PIN_AIR_QUALITY_SENSOR, INPUT);
-  Serial.println("MQ135 initialized");
   
   dhtIndoor.begin();
   dhtOutdoor.begin();
-  Serial.println("DHT22 sensors initialized");
+  Serial.println("Sensors initialized");
   displayStartupMessage("Sensors Ready");
   delay(1000);
 
@@ -203,7 +224,6 @@ void setup() {
   displayStartupMessage("DS3231 Ready");
   delay(1000);
 
-  // Connect WiFi and sync with NTP
   displayStartupMessage("Connecting WiFi...");
   if (connectWiFi()) {
     wifiConnected = true;
@@ -217,12 +237,12 @@ void setup() {
       Serial.println("NTP sync successful");
       displayStartupMessage("Time Synchronized");
     } else {
-      Serial.println("NTP sync failed, using RTC time");
+      Serial.println("NTP sync failed");
       displayStartupMessage("Using RTC time");
     }
   } else {
-    Serial.println("WiFi connection failed, using RTC time");
-    displayStartupMessage("No WiFi - RTC time");
+    Serial.println("WiFi failed");
+    displayStartupMessage("No WiFi");
   }
   delay(2000);
 
@@ -238,6 +258,8 @@ void setup() {
   delay(2000);
   lcd.clear();
 
+  lastLCDActivity = millis();
+
   Serial.println("System ready!");
   Serial.println();
 }
@@ -247,6 +269,16 @@ void setup() {
 // ==========================================
 void loop() {
   static unsigned long lastAnimationUpdate = 0;
+
+  // Process button
+  button.tick();
+
+  // Manage LCD backlight timeout
+  if (lcdBacklightOn && (millis() - lastLCDActivity > LCD_BACKLIGHT_TIMEOUT)) {
+    lcd.noBacklight();
+    lcdBacklightOn = false;
+    Serial.println("LCD backlight OFF");
+  }
 
   if (millis() - lastSecondUpdate >= 1000 && !isAnimationActive) {
     lastSecondUpdate = millis();
@@ -258,7 +290,6 @@ void loop() {
       startAnimation();
     }
 
-    // Check for daily NTP sync at 1:01 AM
     if (wifiConnected && now.hour() == NTP_SYNC_HOUR && 
         now.minute() == NTP_SYNC_MINUTE && now.second() == 0) {
       Serial.println("Daily NTP sync triggered");
@@ -268,12 +299,10 @@ void loop() {
     if (now.second() % 10 == 0) {
       Serial.print("Time: ");
       printDateTime(now);
-      Serial.print(" | RTC: ");
-      Serial.print(rtc.getTemperature());
-      Serial.print("°C | Indoor: ");
-      Serial.print(indoorData.temperature);
-      Serial.print("°C | AQI: ");
-      Serial.println(airQuality.estimatedAQI);
+      Serial.print(" | Mode: ");
+      Serial.print(currentDisplayMode);
+      Serial.print(" | LCD: ");
+      Serial.println(lcdBacklightOn ? "ON" : "OFF");
     }
   }
 
@@ -283,7 +312,7 @@ void loop() {
     updateAirQuality();
   }
 
-  if (millis() - lastLCDUpdate >= 2000 && !isAnimationActive) {
+  if (millis() - lastLCDUpdate >= 2000 && !isAnimationActive && lcdBacklightOn) {
     lastLCDUpdate = millis();
     DateTime now = rtc.now();
     updateLCDDisplay(now);
@@ -302,7 +331,236 @@ void loop() {
 }
 
 // ==========================================
-// WIFI & NTP FUNCTIONS
+// BUTTON CALLBACK FUNCTIONS
+// ==========================================
+void buttonClick() {
+  lastLCDActivity = millis();
+  
+  // If LCD is off, just wake it up (no mode change)
+  if (!lcdBacklightOn) {
+    lcd.backlight();
+    lcdBacklightOn = true;
+    Serial.println("LCD backlight ON (wake up)");
+    lcd.clear();
+    return;
+  }
+  
+  // Cycle to next mode
+  currentDisplayMode = (DisplayMode)((currentDisplayMode + 1) % MODE_COUNT);
+  Serial.print("Mode changed to: ");
+  Serial.println(currentDisplayMode);
+  lcd.clear();
+}
+
+void buttonLongPress() {
+  lastLCDActivity = millis();
+  
+  // Wake LCD if off
+  if (!lcdBacklightOn) {
+    lcd.backlight();
+    lcdBacklightOn = true;
+    Serial.println("LCD backlight ON");
+  }
+  
+  // Return to default mode
+  currentDisplayMode = MODE_TEMP_HUMIDITY;
+  Serial.println("Returning to default mode");
+  lcd.clear();
+}
+
+// ==========================================
+// LCD DISPLAY FUNCTIONS
+// ==========================================
+void updateLCDDisplay(DateTime now) {
+  switch (currentDisplayMode) {
+    case MODE_TEMP_HUMIDITY:
+      displayTempHumidity(now);
+      break;
+    case MODE_FEELS_LIKE:
+      displayFeelsLike(now);
+      break;
+    case MODE_HUMIDEX:
+      displayHumidex(now);
+      break;
+  }
+}
+
+void displayTempHumidity(DateTime now) {
+  static char lastDateBuffer[21] = "";
+  static char lastTimeBuffer[21] = "";
+  static char lastIndoorBuffer[21] = "";
+  static char lastOutdoorBuffer[21] = "";
+  
+  // Line 0: Date + Day (only update if changed)
+  char dateBuffer[21];
+  sprintf(dateBuffer, "%02d/%02d/%04d", now.day(), now.month(), now.year());
+  const char* days[] = {"Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"};
+  char fullDateBuffer[21];
+  sprintf(fullDateBuffer, "%s        %s", dateBuffer, days[now.dayOfTheWeek()]);
+  
+  if (strcmp(fullDateBuffer, lastDateBuffer) != 0) {
+    lcd.setCursor(0, 0);
+    lcd.print(fullDateBuffer);
+    strcpy(lastDateBuffer, fullDateBuffer);
+  }
+
+  // Line 1: Time (always update)
+  char timeBuffer[21];
+  sprintf(timeBuffer, "Heure: %02d:%02d:%02d   ", now.hour(), now.minute(), now.second());
+  if (strcmp(timeBuffer, lastTimeBuffer) != 0) {
+    lcd.setCursor(0, 1);
+    lcd.print(timeBuffer);
+    strcpy(lastTimeBuffer, timeBuffer);
+  }
+
+  // Line 2: Indoor (only update if data changed)
+  char indoorBuffer[21];
+  if (indoorData.valid) {
+    sprintf(indoorBuffer, "Int:%4.1f%cC   %3d%%  ", 
+            indoorData.temperature, 
+            223, // degree symbol placeholder
+            (int)indoorData.humidity);
+  } else {
+    sprintf(indoorBuffer, "Int: ERREUR         ");
+  }
+  
+  if (strcmp(indoorBuffer, lastIndoorBuffer) != 0) {
+    lcd.setCursor(0, 2);
+    lcd.print("Int:");
+    if (indoorData.valid) {
+      lcd.print(indoorData.temperature, 1);
+      lcd.write(byte(0));
+      lcd.print("C   ");
+      lcd.print((int)indoorData.humidity);
+      lcd.print("%  ");
+    } else {
+      lcd.print(" ERREUR         ");
+    }
+    strcpy(lastIndoorBuffer, indoorBuffer);
+  }
+
+  // Line 3: Outdoor + AQI (only update if data changed)
+  char outdoorBuffer[21];
+  if (outdoorData.valid) {
+    sprintf(outdoorBuffer, "Ext:%4.1f AQI:%3d", 
+            outdoorData.temperature, 
+            airQuality.estimatedAQI);
+  } else {
+    sprintf(outdoorBuffer, "Ext:ERR  AQI:---    ");
+  }
+  
+  if (strcmp(outdoorBuffer, lastOutdoorBuffer) != 0) {
+    lcd.setCursor(0, 3);
+    lcd.print("Ext:");
+    if (outdoorData.valid) {
+      lcd.print(outdoorData.temperature, 1);
+      lcd.write(byte(0));
+      lcd.print(" AQI:");
+      lcd.print(airQuality.estimatedAQI);
+      lcd.print("   ");
+    } else {
+      lcd.print("ERR  AQI:---    ");
+    }
+    strcpy(lastOutdoorBuffer, outdoorBuffer);
+  }
+}
+
+void displayFeelsLike(DateTime now) {
+  lcd.setCursor(0, 0);
+  lcd.print("Temp. Ressentie     ");
+
+  lcd.setCursor(0, 1);
+  if (outdoorData.valid) {
+    lcd.print("Exterieur: ");
+    lcd.print(outdoorData.temperature, 1);
+    lcd.write(byte(0));
+    lcd.print("C  ");
+  } else {
+    lcd.print("Exterieur: ERREUR   ");
+  }
+
+  lcd.setCursor(0, 2);
+  if (outdoorData.valid) {
+    lcd.print("Ressenti : ");
+    lcd.print(outdoorData.feelsLike, 1);
+    lcd.write(byte(0));
+    lcd.print("C  ");
+  } else {
+    lcd.print("Ressenti : ERREUR   ");
+  }
+
+  lcd.setCursor(0, 3);
+  if (outdoorData.valid) {
+    lcd.print("Pt rosee : ");
+    lcd.print(outdoorData.dewPoint, 1);
+    lcd.write(byte(0));
+    lcd.print("C  ");
+  } else {
+    lcd.print("Pt rosee : ERREUR   ");
+  }
+}
+
+void displayHumidex(DateTime now) {
+  static int lastHumidex = -999;
+  
+  lcd.setCursor(0, 0);
+  lcd.print("Indice Humidex      ");
+
+  lcd.setCursor(0, 1);
+  if (outdoorData.valid) {
+    lcd.print("Humidex:        ");
+    lcd.setCursor(9, 1);
+    lcd.print(outdoorData.humidex);
+    lcd.print("  ");
+  } else {
+    lcd.print("Humidex: ERREUR     ");
+  }
+
+  // Only update description if humidex changed significantly (±2)
+  if (outdoorData.valid && abs(outdoorData.humidex - lastHumidex) >= 2) {
+    lcd.setCursor(0, 2);
+    const char* desc = getHumidexDescription(outdoorData.humidex);
+    lcd.print(desc);
+    // Pad to full line
+    int len = strlen(desc);
+    for (int i = len; i < LCD_COLUMNS; i++) {
+      lcd.print(" ");
+    }
+    lastHumidex = outdoorData.humidex;
+  } else if (!outdoorData.valid) {
+    lcd.setCursor(0, 2);
+    lcd.print("                    ");
+  }
+
+  lcd.setCursor(0, 3);
+  lcd.print("Exterieur uniquement");
+}
+
+const char* getHumidexDescription(int humidex) {
+  if (humidex < 20) return "Pas d'inconfort";
+  if (humidex < 30) return "Peu d'inconfort";
+  if (humidex < 40) return "Inconfort certain";
+  if (humidex < 45) return "Eviter efforts";
+  return "Danger chaleur";
+}
+
+void displayStartupMessage(const char* message) {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Smart LED Clock     ");
+  lcd.setCursor(0, 1);
+  lcd.print("Phase 5 - Final     ");
+  lcd.setCursor(0, 3);
+  lcd.print(message);
+  // Pad with spaces
+  int msgLen = strlen(message);
+  for (int i = msgLen; i < LCD_COLUMNS; i++) {
+    lcd.print(" ");
+  }
+}
+
+// ==========================================
+// WIFI & NTP
 // ==========================================
 bool connectWiFi() {
   Serial.print("Connecting to WiFi: ");
@@ -319,9 +577,7 @@ bool connectWiFi() {
   Serial.println();
   
   if (WiFi.status() == WL_CONNECTED) {
-    // Wait a bit for DHCP to assign IP
     delay(1000);
-    
     Serial.print("Connected! IP: ");
     Serial.println(WiFi.localIP());
     return true;
@@ -346,8 +602,8 @@ bool syncTimeWithNTP() {
   if (timeClient.isTimeSet()) {
     unsigned long epochTime = timeClient.getEpochTime();
     rtc.adjust(DateTime(epochTime));
-    
     lastNTPSync = millis();
+    lastNTPSyncSuccess = true;
     
     Serial.print("Time synchronized: ");
     DateTime now = rtc.now();
@@ -358,11 +614,12 @@ bool syncTimeWithNTP() {
   }
   
   Serial.println("NTP sync failed");
+  lastNTPSyncSuccess = false;
   return false;
 }
 
 // ==========================================
-// SENSOR FUNCTIONS (unchanged from Phase 3.2)
+// SENSOR FUNCTIONS
 // ==========================================
 void updateSensorData() {
   float tempIn = dhtIndoor.readTemperature();
@@ -457,64 +714,7 @@ void updateAirQualityLEDs() {
 }
 
 // ==========================================
-// LCD DISPLAY
-// ==========================================
-void updateLCDDisplay(DateTime now) {
-  lcd.setCursor(0, 0);
-  char dateBuffer[21];
-  sprintf(dateBuffer, "%02d/%02d/%04d", now.day(), now.month(), now.year());
-  lcd.print(dateBuffer);
-  
-  const char* daysOfWeek[] = {"Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"};
-  lcd.setCursor(12, 0);
-  lcd.print(daysOfWeek[now.dayOfTheWeek()]);
-  lcd.print("    ");
-
-  lcd.setCursor(0, 1);
-  char timeBuffer[21];
-  sprintf(timeBuffer, "Heure: %02d:%02d:%02d", now.hour(), now.minute(), now.second());
-  lcd.print(timeBuffer);
-  lcd.print("    ");
-
-  lcd.setCursor(0, 2);
-  if (indoorData.valid) {
-    lcd.print("Int: ");
-    lcd.print(indoorData.temperature, 1);
-    lcd.write(byte(0));
-    lcd.print("C ");
-    lcd.print((int)indoorData.humidity);
-    lcd.print("%");
-    lcd.print("   ");
-  } else {
-    lcd.print("Int: ERREUR        ");
-  }
-
-  lcd.setCursor(0, 3);
-  if (outdoorData.valid) {
-    lcd.print("Ext:");
-    lcd.print(outdoorData.temperature, 1);
-    lcd.write(byte(0));
-  } else {
-    lcd.print("Ext:ERR ");
-  }
-  
-  lcd.print(" AQI:");
-  lcd.print(airQuality.estimatedAQI);
-  lcd.print("    ");
-}
-
-void displayStartupMessage(const char* message) {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Smart LED Clock");
-  lcd.setCursor(0, 1);
-  lcd.print("Phase 4");
-  lcd.setCursor(0, 3);
-  lcd.print(message);
-}
-
-// ==========================================
-// LED CLOCK & ANIMATION (unchanged)
+// LED CLOCK & ANIMATION
 // ==========================================
 void updateLEDClock(DateTime now) {
   int hour = now.hour() % 12;
@@ -550,9 +750,11 @@ void updateLEDClock(DateTime now) {
 
 void startAnimation() {
   Serial.println("Starting hourly animation");
-  lcd.clear();
-  lcd.setCursor(0, 1);
-  lcd.print("  Animation horaire");
+  if (lcdBacklightOn) {
+    lcd.clear();
+    lcd.setCursor(0, 1);
+    lcd.print("  Animation horaire ");
+  }
   isAnimationActive = true;
   animationStep = 0;
   animationHue = 0;
@@ -586,7 +788,9 @@ void stopAnimation() {
   lastMinute = 61;
   lastHour = 25;
   updateLEDClock(now);
-  updateLCDDisplay(now);
+  if (lcdBacklightOn) {
+    updateLCDDisplay(now);
+  }
 }
 
 void printDateTime(DateTime dt) {
