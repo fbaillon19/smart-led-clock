@@ -1,0 +1,17 @@
+# Fichiers de credentials secrets.h
+firmware/smart-led-clock/secrets.h
+
+# Fichiers de compilation Arduino
+*.hex
+*.elf
+*.o
+*.bin
+*.eep
+*.lss
+*.map
+*.sym
+*.lst
+
+# Fichiers système
+.DS_Store
+Thumbs.db
