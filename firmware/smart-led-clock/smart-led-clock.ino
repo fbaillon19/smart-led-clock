@@ -1,20 +1,23 @@
 /**
- * Smart LED Clock - Phase 3.1: Real Temperature Sensors
+ * Smart LED Clock - Phase 3.2: Air Quality Monitoring
  * 
- * This version replaces simulated data with real DHT22 sensors:
- * - Indoor temperature and humidity
- * - Outdoor temperature and humidity
- * - Calculated values: feels-like, dew point, humidex
+ * This version adds air quality monitoring with MQ135 sensor:
+ * - Real-time air quality reading (ADC value)
+ * - Estimated AQI (Air Quality Index)
+ * - Visual bar graph display with color gradient
+ * - Green (good) → Yellow (moderate) → Red (poor)
  * 
  * Components active in this phase:
  * - DS3231 RTC module
  * - 12 LED ring (hours)
  * - 60 LED ring (minutes/seconds)
+ * - 10 LED bar (air quality indicator)
  * - 20x4 I2C LCD display
  * - 2x DHT22 sensors (indoor/outdoor)
+ * - MQ135 air quality sensor
  * 
  * Author: F. Baillon
- * Version: Phase 3.1
+ * Version: Phase 3.2
  * Date: January 2025
  * License: GPL v3.0
  */
@@ -30,8 +33,10 @@
 // ==========================================
 #define PIN_LEDS_MINUTE_SECOND  9
 #define PIN_LEDS_HOUR          10
+#define PIN_LEDS_AIR_QUALITY   11
 #define PIN_DHT_INDOOR          5
 #define PIN_DHT_OUTDOOR         6
+#define PIN_AIR_QUALITY_SENSOR  A0
 
 // ==========================================
 // SENSOR CONFIGURATION
@@ -39,11 +44,16 @@
 #define DHT_TYPE                DHT22
 #define SENSOR_READ_INTERVAL    2000  // Read sensors every 2 seconds
 
+// Air quality color gradient (HSV color wheel)
+#define AQI_COLOR_GOOD          21845  // Green (65536/3)
+#define AQI_COLOR_STEP          44     // Color step per AQI point
+
 // ==========================================
 // LED CONFIGURATION
 // ==========================================
 #define NUM_LEDS_HOUR           12
 #define NUM_LEDS_MINUTE_SECOND  60
+#define NUM_LEDS_AIR_QUALITY    10
 
 // LED Colors
 #define COLOR_SECOND_R          0
@@ -74,6 +84,7 @@
 // ==========================================
 Adafruit_NeoPixel ledsHour(NUM_LEDS_HOUR, PIN_LEDS_HOUR, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel ledsMinuteSec(NUM_LEDS_MINUTE_SECOND, PIN_LEDS_MINUTE_SECOND, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel ledsAirQuality(NUM_LEDS_AIR_QUALITY, PIN_LEDS_AIR_QUALITY, NEO_GRB + NEO_KHZ800);
 RTC_DS3231 rtc;
 LiquidCrystal_I2C lcd(LCD_I2C_ADDRESS, LCD_COLUMNS, LCD_ROWS);
 DHT dhtIndoor(PIN_DHT_INDOOR, DHT_TYPE);
@@ -92,7 +103,7 @@ byte degreeSymbol[8] = {
 };
 
 // ==========================================
-// SENSOR DATA STRUCTURE
+// SENSOR DATA STRUCTURES
 // ==========================================
 struct SensorData {
   float temperature;
@@ -100,6 +111,14 @@ struct SensorData {
   float feelsLike;
   float dewPoint;
   int humidex;
+  bool valid;
+  unsigned long lastUpdate;
+};
+
+struct AirQualityData {
+  int rawADC;
+  int estimatedAQI;
+  const char* quality;
   bool valid;
   unsigned long lastUpdate;
 };
@@ -120,6 +139,9 @@ int animationHue = 0;
 
 SensorData indoorData = {0, 0, 0, 0, 0, false, 0};
 SensorData outdoorData = {0, 0, 0, 0, 0, false, 0};
+AirQualityData airQuality = {0, 0, "Unknown", false, 0};
+
+int lastAirQualityValue = -1; // For change detection
 
 // ==========================================
 // SETUP
@@ -128,7 +150,7 @@ void setup() {
   Serial.begin(115200);
   delay(2000);
   
-  Serial.println("=== Smart LED Clock - Phase 3.1 ===");
+  Serial.println("=== Smart LED Clock - Phase 3.2 ===");
   Serial.println("Initializing...");
 
   // Initialize I2C
@@ -148,22 +170,32 @@ void setup() {
   // Initialize LED strips
   ledsHour.begin();
   ledsMinuteSec.begin();
+  ledsAirQuality.begin();
   ledsHour.setBrightness(100);
   ledsMinuteSec.setBrightness(100);
+  ledsAirQuality.setBrightness(100);
   ledsHour.clear();
   ledsMinuteSec.clear();
+  ledsAirQuality.clear();
   ledsHour.show();
   ledsMinuteSec.show();
+  ledsAirQuality.show();
   
   Serial.println("LED strips initialized");
   displayStartupMessage("LEDs Ready");
+  delay(1000);
+
+  // Initialize air quality sensor
+  pinMode(PIN_AIR_QUALITY_SENSOR, INPUT);
+  Serial.println("MQ135 air quality sensor initialized");
+  displayStartupMessage("Air sensor ready");
   delay(1000);
 
   // Initialize DHT22 sensors
   dhtIndoor.begin();
   dhtOutdoor.begin();
   Serial.println("DHT22 sensors initialized");
-  displayStartupMessage("Sensors Ready");
+  displayStartupMessage("Temp sensors ready");
   delay(1000);
 
   // Initialize DS3231 RTC
@@ -196,6 +228,7 @@ void setup() {
   // Initial sensor reading
   displayStartupMessage("Reading sensors...");
   updateSensorData();
+  updateAirQuality();
   delay(2000);
 
   displayStartupMessage("System Ready!");
@@ -235,7 +268,8 @@ void loop() {
       Serial.print(indoorData.temperature);
       Serial.print("°C | Outdoor: ");
       Serial.print(outdoorData.temperature);
-      Serial.println("°C");
+      Serial.print("°C | AQI: ");
+      Serial.println(airQuality.estimatedAQI);
     }
   }
 
@@ -243,6 +277,7 @@ void loop() {
   if (millis() - lastSensorUpdate >= SENSOR_READ_INTERVAL) {
     lastSensorUpdate = millis();
     updateSensorData();
+    updateAirQuality();
   }
 
   // Update LCD display every 2 seconds (when not animating)
@@ -266,7 +301,7 @@ void loop() {
 }
 
 // ==========================================
-// SENSOR FUNCTIONS
+// TEMPERATURE SENSOR FUNCTIONS
 // ==========================================
 void updateSensorData() {
   // Read indoor sensor
@@ -305,28 +340,94 @@ void updateSensorData() {
 }
 
 float calculateDewPoint(float temp, float humidity) {
-  // Magnus-Tetens formula
   float alpha = log(humidity / 100.0) + (17.27 * temp) / (237.3 + temp);
   return (237.3 * alpha) / (17.27 - alpha);
 }
 
 int calculateHumidex(float temp, float humidity) {
-  // Calculate dew point first
   float dewPoint = calculateDewPoint(temp, humidity);
-  
-  // Masterton and Richardson equation
   float e = 6.11 * exp(5417.753 * (1.0/273.16 - 1.0/(273.15 + dewPoint)));
   float humidex = temp + 0.5555 * (e - 10.0);
-  
   return (int)humidex;
 }
 
-const char* getHumidexDescription(int humidex) {
-  if (humidex < 20) return "Pas d'inconfort";
-  if (humidex < 30) return "Peu d'inconfort";
-  if (humidex < 40) return "Inconfort certain";
-  if (humidex < 45) return "Eviter efforts";
-  return "Danger chaleur";
+// ==========================================
+// AIR QUALITY FUNCTIONS
+// ==========================================
+void updateAirQuality() {
+  // Read analog value from MQ135
+  airQuality.rawADC = analogRead(PIN_AIR_QUALITY_SENSOR);
+  
+  // Estimate AQI (simple linear mapping for now)
+  // MQ135 typical range: 100-500 ADC
+  airQuality.estimatedAQI = constrain(airQuality.rawADC / 5, 0, 500);
+  
+  // Determine quality level
+  if (airQuality.estimatedAQI <= 50) {
+    airQuality.quality = "Good";
+  } else if (airQuality.estimatedAQI <= 100) {
+    airQuality.quality = "Moderate";
+  } else if (airQuality.estimatedAQI <= 150) {
+    airQuality.quality = "Unhealthy-S";
+  } else if (airQuality.estimatedAQI <= 200) {
+    airQuality.quality = "Unhealthy";
+  } else if (airQuality.estimatedAQI <= 300) {
+    airQuality.quality = "Very Poor";
+  } else {
+    airQuality.quality = "Hazardous";
+  }
+  
+  airQuality.valid = true;
+  airQuality.lastUpdate = millis();
+  
+  // Update LED display only if value changed significantly
+  if (abs(airQuality.rawADC - lastAirQualityValue) > 5) {
+    updateAirQualityLEDs();
+    lastAirQualityValue = airQuality.rawADC;
+  }
+}
+
+void updateAirQualityLEDs() {
+  // Option 1: Progressive fill with color gradient
+  // All 10 LEDs always lit, color shifts based on air quality
+  
+  // Reduced brightness - keep it subtle
+  int brightness = constrain(20 + (airQuality.estimatedAQI / 10), 20, 60);
+  ledsAirQuality.setBrightness(brightness);
+  ledsAirQuality.clear();
+  
+  // Calculate base color shift based on AQI
+  // Good air (0-50): Green zone (hue ~21845)
+  // Moderate (50-100): Yellow-green (hue ~16384)
+  // Unhealthy (100-200): Yellow-orange (hue ~8192)
+  // Bad (200+): Orange-red (hue ~4096 to 0)
+  int baseHue;
+  if (airQuality.estimatedAQI <= 50) {
+    baseHue = map(airQuality.estimatedAQI, 0, 50, 26000, 21845); // Cyan-green to green
+  } else if (airQuality.estimatedAQI <= 100) {
+    baseHue = map(airQuality.estimatedAQI, 50, 100, 21845, 16384); // Green to yellow-green
+  } else if (airQuality.estimatedAQI <= 200) {
+    baseHue = map(airQuality.estimatedAQI, 100, 200, 16384, 4096); // Yellow to orange
+  } else {
+    baseHue = map(airQuality.estimatedAQI, 200, 500, 4096, 0); // Orange to red
+  }
+  
+  // Fill all LEDs with gradient from base color
+  for (int i = 0; i < NUM_LEDS_AIR_QUALITY; i++) {
+    // Create subtle gradient across the bar
+    // Bottom LEDs slightly cooler, top LEDs slightly warmer
+    int hueOffset = (i - NUM_LEDS_AIR_QUALITY / 2) * 500;
+    int ledHue = baseHue + hueOffset;
+    
+    // Keep hue in valid range
+    if (ledHue < 0) ledHue += 65536;
+    if (ledHue >= 65536) ledHue -= 65536;
+    
+    uint32_t color = ledsAirQuality.gamma32(ledsAirQuality.ColorHSV(ledHue));
+    ledsAirQuality.setPixelColor(i, color);
+  }
+  
+  ledsAirQuality.show();
 }
 
 // ==========================================
@@ -365,19 +466,19 @@ void updateLCDDisplay(DateTime now) {
     lcd.print("Int: ERREUR        ");
   }
 
-  // Line 3: Outdoor sensor
+  // Line 3: Outdoor sensor + Air quality
   lcd.setCursor(0, 3);
   if (outdoorData.valid) {
-    lcd.print("Ext: ");
+    lcd.print("Ext:");
     lcd.print(outdoorData.temperature, 1);
     lcd.write(byte(0));
-    lcd.print("C ");
-    lcd.print((int)outdoorData.humidity);
-    lcd.print("%");
-    lcd.print("   ");
   } else {
-    lcd.print("Ext: ERREUR        ");
+    lcd.print("Ext:ERR ");
   }
+  
+  lcd.print(" AQI:");
+  lcd.print(airQuality.estimatedAQI);
+  lcd.print("    ");
 }
 
 void displayStartupMessage(const char* message) {
@@ -385,7 +486,7 @@ void displayStartupMessage(const char* message) {
   lcd.setCursor(0, 0);
   lcd.print("Smart LED Clock");
   lcd.setCursor(0, 1);
-  lcd.print("Phase 3.1");
+  lcd.print("Phase 3.2");
   lcd.setCursor(0, 3);
   lcd.print(message);
 }
@@ -398,7 +499,6 @@ void updateLEDClock(DateTime now) {
   int minute = now.minute();
   int second = now.second();
 
-  // Update hour if changed
   if (hour != lastHour) {
     ledsHour.setPixelColor(lastHour, 0, 0, 0);
     lastHour = hour;
@@ -406,18 +506,15 @@ void updateLEDClock(DateTime now) {
   ledsHour.setPixelColor(hour, COLOR_HOUR_R, COLOR_HOUR_G, COLOR_HOUR_B);
   ledsHour.show();
 
-  // Update minute if changed
   if (minute != lastMinute) {
     ledsMinuteSec.setPixelColor(lastMinute, 0, 0, 0);
     lastMinute = minute;
   }
 
-  // Clear previous second
   if (lastSecond != 61 && lastSecond != minute) {
     ledsMinuteSec.setPixelColor(lastSecond, 0, 0, 0);
   }
 
-  // Display minute
   if (minute == second) {
     ledsMinuteSec.setPixelColor(minute, COLOR_OVERLAP_R, COLOR_OVERLAP_G, COLOR_OVERLAP_B);
   } else {
