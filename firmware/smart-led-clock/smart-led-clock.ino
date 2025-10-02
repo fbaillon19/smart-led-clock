@@ -1,23 +1,25 @@
 /**
- * Smart LED Clock - Phase 3.2: Air Quality Monitoring
+ * Smart LED Clock - Phase 4: WiFi + NTP Synchronization
  * 
- * This version adds air quality monitoring with MQ135 sensor:
- * - Real-time air quality reading (ADC value)
- * - Estimated AQI (Air Quality Index)
- * - Visual bar graph display with color gradient
- * - Green (good) → Yellow (moderate) → Red (poor)
+ * This version adds network capabilities:
+ * - WiFi connection at startup
+ * - NTP time synchronization with DS3231
+ * - Daily automatic sync at 1:01 AM
+ * - WiFi status display on LCD
+ * - Network error handling
  * 
  * Components active in this phase:
  * - DS3231 RTC module
  * - 12 LED ring (hours)
  * - 60 LED ring (minutes/seconds)
- * - 10 LED bar (air quality indicator)
+ * - 10 LED bar (air quality)
  * - 20x4 I2C LCD display
- * - 2x DHT22 sensors (indoor/outdoor)
+ * - 2x DHT22 sensors
  * - MQ135 air quality sensor
+ * - WiFi (Arduino UNO R4 WiFi)
  * 
  * Author: F. Baillon
- * Version: Phase 3.2
+ * Version: Phase 4
  * Date: January 2025
  * License: GPL v3.0
  */
@@ -27,6 +29,14 @@
 #include <RTClib.h>
 #include <LiquidCrystal_I2C.h>
 #include <DHT.h>
+#include <WiFiS3.h>
+#include <WiFiUdp.h>
+#include <NTPClient.h>
+
+// WiFi credentials - create secrets.h with:
+// const char* ssid = "YourSSID";
+// const char* pass = "YourPassword";
+#include "secrets.h"
 
 // ==========================================
 // PIN DEFINITIONS
@@ -39,14 +49,13 @@
 #define PIN_AIR_QUALITY_SENSOR  A0
 
 // ==========================================
-// SENSOR CONFIGURATION
+// CONFIGURATION
 // ==========================================
 #define DHT_TYPE                DHT22
-#define SENSOR_READ_INTERVAL    2000  // Read sensors every 2 seconds
-
-// Air quality color gradient (HSV color wheel)
-#define AQI_COLOR_GOOD          21845  // Green (65536/3)
-#define AQI_COLOR_STEP          44     // Color step per AQI point
+#define SENSOR_READ_INTERVAL    2000
+#define NTP_SYNC_HOUR           1     // Daily sync at 1 AM
+#define NTP_SYNC_MINUTE         1
+#define TIME_ZONE_OFFSET        2     // UTC+2 for Paris (summer time CEST)
 
 // ==========================================
 // LED CONFIGURATION
@@ -55,19 +64,15 @@
 #define NUM_LEDS_MINUTE_SECOND  60
 #define NUM_LEDS_AIR_QUALITY    10
 
-// LED Colors
 #define COLOR_SECOND_R          0
 #define COLOR_SECOND_G          127
 #define COLOR_SECOND_B          0
-
 #define COLOR_MINUTE_R          127
 #define COLOR_MINUTE_G          0
 #define COLOR_MINUTE_B          0
-
 #define COLOR_OVERLAP_R         127
 #define COLOR_OVERLAP_G         127
 #define COLOR_OVERLAP_B         0
-
 #define COLOR_HOUR_R            0
 #define COLOR_HOUR_G            0
 #define COLOR_HOUR_B            127
@@ -90,16 +95,12 @@ LiquidCrystal_I2C lcd(LCD_I2C_ADDRESS, LCD_COLUMNS, LCD_ROWS);
 DHT dhtIndoor(PIN_DHT_INDOOR, DHT_TYPE);
 DHT dhtOutdoor(PIN_DHT_OUTDOOR, DHT_TYPE);
 
-// Custom degree symbol for LCD
+WiFiUDP udp;
+NTPClient timeClient(udp, "pool.ntp.org", TIME_ZONE_OFFSET * 3600, 60000);
+
 byte degreeSymbol[8] = {
-  0b01100,
-  0b10010,
-  0b10010,
-  0b01100,
-  0b00000,
-  0b00000,
-  0b00000,
-  0b00000
+  0b01100, 0b10010, 0b10010, 0b01100,
+  0b00000, 0b00000, 0b00000, 0b00000
 };
 
 // ==========================================
@@ -141,7 +142,10 @@ SensorData indoorData = {0, 0, 0, 0, 0, false, 0};
 SensorData outdoorData = {0, 0, 0, 0, 0, false, 0};
 AirQualityData airQuality = {0, 0, "Unknown", false, 0};
 
-int lastAirQualityValue = -1; // For change detection
+int lastAirQualityValue = -1;
+bool wifiConnected = false;
+bool lastNTPSyncSuccess = false;
+unsigned long lastNTPSync = 0;
 
 // ==========================================
 // SETUP
@@ -150,13 +154,11 @@ void setup() {
   Serial.begin(115200);
   delay(2000);
   
-  Serial.println("=== Smart LED Clock - Phase 3.2 ===");
+  Serial.println("=== Smart LED Clock - Phase 4 ===");
   Serial.println("Initializing...");
 
-  // Initialize I2C
   Wire.begin();
   
-  // Initialize LCD
   lcd.init();
   lcd.backlight();
   lcd.createChar(0, degreeSymbol);
@@ -164,10 +166,7 @@ void setup() {
   
   displayStartupMessage("Initializing...");
   delay(1000);
-  
-  Serial.println("LCD initialized");
 
-  // Initialize LED strips
   ledsHour.begin();
   ledsMinuteSec.begin();
   ledsAirQuality.begin();
@@ -185,55 +184,58 @@ void setup() {
   displayStartupMessage("LEDs Ready");
   delay(1000);
 
-  // Initialize air quality sensor
   pinMode(PIN_AIR_QUALITY_SENSOR, INPUT);
-  Serial.println("MQ135 air quality sensor initialized");
-  displayStartupMessage("Air sensor ready");
-  delay(1000);
-
-  // Initialize DHT22 sensors
+  Serial.println("MQ135 initialized");
+  
   dhtIndoor.begin();
   dhtOutdoor.begin();
   Serial.println("DHT22 sensors initialized");
-  displayStartupMessage("Temp sensors ready");
+  displayStartupMessage("Sensors Ready");
   delay(1000);
 
-  // Initialize DS3231 RTC
   if (!rtc.begin()) {
     Serial.println("ERROR: DS3231 not found!");
     displayStartupMessage("DS3231 ERROR!");
-    while(1) {
-      delay(1000);
-    }
+    while(1) delay(1000);
   }
   
   Serial.println("DS3231 RTC initialized");
   displayStartupMessage("DS3231 Ready");
   delay(1000);
 
-  // Check if RTC lost power
-  if (rtc.lostPower()) {
-    Serial.println("WARNING: RTC lost power, setting time to compile time");
-    displayStartupMessage("Setting time...");
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  // Connect WiFi and sync with NTP
+  displayStartupMessage("Connecting WiFi...");
+  if (connectWiFi()) {
+    wifiConnected = true;
+    Serial.println("WiFi connected");
+    displayStartupMessage("WiFi Connected");
     delay(1000);
+    
+    displayStartupMessage("Syncing time...");
+    if (syncTimeWithNTP()) {
+      lastNTPSyncSuccess = true;
+      Serial.println("NTP sync successful");
+      displayStartupMessage("Time Synchronized");
+    } else {
+      Serial.println("NTP sync failed, using RTC time");
+      displayStartupMessage("Using RTC time");
+    }
+  } else {
+    Serial.println("WiFi connection failed, using RTC time");
+    displayStartupMessage("No WiFi - RTC time");
   }
+  delay(2000);
 
-  // Get current time
   DateTime now = rtc.now();
   Serial.print("Current time: ");
   printDateTime(now);
   Serial.println();
 
-  // Initial sensor reading
-  displayStartupMessage("Reading sensors...");
   updateSensorData();
   updateAirQuality();
-  delay(2000);
 
   displayStartupMessage("System Ready!");
   delay(2000);
-  
   lcd.clear();
 
   Serial.println("System ready!");
@@ -246,19 +248,23 @@ void setup() {
 void loop() {
   static unsigned long lastAnimationUpdate = 0;
 
-  // Update clock every second (when not animating)
   if (millis() - lastSecondUpdate >= 1000 && !isAnimationActive) {
     lastSecondUpdate = millis();
     
     DateTime now = rtc.now();
     updateLEDClock(now);
     
-    // Check for hour change to trigger animation
     if (now.minute() == 0 && now.second() == 0 && !isAnimationActive) {
       startAnimation();
     }
 
-    // Debug output every 10 seconds
+    // Check for daily NTP sync at 1:01 AM
+    if (wifiConnected && now.hour() == NTP_SYNC_HOUR && 
+        now.minute() == NTP_SYNC_MINUTE && now.second() == 0) {
+      Serial.println("Daily NTP sync triggered");
+      syncTimeWithNTP();
+    }
+
     if (now.second() % 10 == 0) {
       Serial.print("Time: ");
       printDateTime(now);
@@ -266,28 +272,23 @@ void loop() {
       Serial.print(rtc.getTemperature());
       Serial.print("°C | Indoor: ");
       Serial.print(indoorData.temperature);
-      Serial.print("°C | Outdoor: ");
-      Serial.print(outdoorData.temperature);
       Serial.print("°C | AQI: ");
       Serial.println(airQuality.estimatedAQI);
     }
   }
 
-  // Update sensors every 2 seconds
   if (millis() - lastSensorUpdate >= SENSOR_READ_INTERVAL) {
     lastSensorUpdate = millis();
     updateSensorData();
     updateAirQuality();
   }
 
-  // Update LCD display every 2 seconds (when not animating)
   if (millis() - lastLCDUpdate >= 2000 && !isAnimationActive) {
     lastLCDUpdate = millis();
     DateTime now = rtc.now();
     updateLCDDisplay(now);
   }
 
-  // Handle animation
   if (isAnimationActive) {
     if (millis() - lastAnimationUpdate >= 50) {
       if (!updateAnimation()) {
@@ -301,10 +302,69 @@ void loop() {
 }
 
 // ==========================================
-// TEMPERATURE SENSOR FUNCTIONS
+// WIFI & NTP FUNCTIONS
+// ==========================================
+bool connectWiFi() {
+  Serial.print("Connecting to WiFi: ");
+  Serial.println(ssid);
+  
+  int attempts = 0;
+  WiFi.begin(ssid, pass);
+  
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    delay(500);
+    Serial.print(".");
+    attempts++;
+  }
+  Serial.println();
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    // Wait a bit for DHCP to assign IP
+    delay(1000);
+    
+    Serial.print("Connected! IP: ");
+    Serial.println(WiFi.localIP());
+    return true;
+  }
+  
+  Serial.println("WiFi connection failed");
+  return false;
+}
+
+bool syncTimeWithNTP() {
+  Serial.println("Synchronizing with NTP server...");
+  
+  timeClient.begin();
+  
+  int attempts = 0;
+  while (!timeClient.update() && attempts < 10) {
+    timeClient.forceUpdate();
+    delay(500);
+    attempts++;
+  }
+  
+  if (timeClient.isTimeSet()) {
+    unsigned long epochTime = timeClient.getEpochTime();
+    rtc.adjust(DateTime(epochTime));
+    
+    lastNTPSync = millis();
+    
+    Serial.print("Time synchronized: ");
+    DateTime now = rtc.now();
+    printDateTime(now);
+    Serial.println();
+    
+    return true;
+  }
+  
+  Serial.println("NTP sync failed");
+  return false;
+}
+
+// ==========================================
+// SENSOR FUNCTIONS (unchanged from Phase 3.2)
 // ==========================================
 void updateSensorData() {
-  // Read indoor sensor
   float tempIn = dhtIndoor.readTemperature();
   float humIn = dhtIndoor.readHumidity();
   
@@ -318,10 +378,8 @@ void updateSensorData() {
     indoorData.lastUpdate = millis();
   } else {
     indoorData.valid = false;
-    Serial.println("ERROR: Indoor sensor read failed");
   }
 
-  // Read outdoor sensor
   float tempOut = dhtOutdoor.readTemperature();
   float humOut = dhtOutdoor.readHumidity();
   
@@ -335,7 +393,6 @@ void updateSensorData() {
     outdoorData.lastUpdate = millis();
   } else {
     outdoorData.valid = false;
-    Serial.println("ERROR: Outdoor sensor read failed");
   }
 }
 
@@ -347,40 +404,23 @@ float calculateDewPoint(float temp, float humidity) {
 int calculateHumidex(float temp, float humidity) {
   float dewPoint = calculateDewPoint(temp, humidity);
   float e = 6.11 * exp(5417.753 * (1.0/273.16 - 1.0/(273.15 + dewPoint)));
-  float humidex = temp + 0.5555 * (e - 10.0);
-  return (int)humidex;
+  return (int)(temp + 0.5555 * (e - 10.0));
 }
 
-// ==========================================
-// AIR QUALITY FUNCTIONS
-// ==========================================
 void updateAirQuality() {
-  // Read analog value from MQ135
   airQuality.rawADC = analogRead(PIN_AIR_QUALITY_SENSOR);
-  
-  // Estimate AQI (simple linear mapping for now)
-  // MQ135 typical range: 100-500 ADC
   airQuality.estimatedAQI = constrain(airQuality.rawADC / 5, 0, 500);
   
-  // Determine quality level
-  if (airQuality.estimatedAQI <= 50) {
-    airQuality.quality = "Good";
-  } else if (airQuality.estimatedAQI <= 100) {
-    airQuality.quality = "Moderate";
-  } else if (airQuality.estimatedAQI <= 150) {
-    airQuality.quality = "Unhealthy-S";
-  } else if (airQuality.estimatedAQI <= 200) {
-    airQuality.quality = "Unhealthy";
-  } else if (airQuality.estimatedAQI <= 300) {
-    airQuality.quality = "Very Poor";
-  } else {
-    airQuality.quality = "Hazardous";
-  }
+  if (airQuality.estimatedAQI <= 50) airQuality.quality = "Good";
+  else if (airQuality.estimatedAQI <= 100) airQuality.quality = "Moderate";
+  else if (airQuality.estimatedAQI <= 150) airQuality.quality = "Unhealthy-S";
+  else if (airQuality.estimatedAQI <= 200) airQuality.quality = "Unhealthy";
+  else if (airQuality.estimatedAQI <= 300) airQuality.quality = "Very Poor";
+  else airQuality.quality = "Hazardous";
   
   airQuality.valid = true;
   airQuality.lastUpdate = millis();
   
-  // Update LED display only if value changed significantly
   if (abs(airQuality.rawADC - lastAirQualityValue) > 5) {
     updateAirQualityLEDs();
     lastAirQualityValue = airQuality.rawADC;
@@ -388,38 +428,24 @@ void updateAirQuality() {
 }
 
 void updateAirQualityLEDs() {
-  // Option 1: Progressive fill with color gradient
-  // All 10 LEDs always lit, color shifts based on air quality
-  
-  // Reduced brightness - keep it subtle
   int brightness = constrain(20 + (airQuality.estimatedAQI / 10), 20, 60);
   ledsAirQuality.setBrightness(brightness);
   ledsAirQuality.clear();
   
-  // Calculate base color shift based on AQI
-  // Good air (0-50): Green zone (hue ~21845)
-  // Moderate (50-100): Yellow-green (hue ~16384)
-  // Unhealthy (100-200): Yellow-orange (hue ~8192)
-  // Bad (200+): Orange-red (hue ~4096 to 0)
   int baseHue;
   if (airQuality.estimatedAQI <= 50) {
-    baseHue = map(airQuality.estimatedAQI, 0, 50, 26000, 21845); // Cyan-green to green
+    baseHue = map(airQuality.estimatedAQI, 0, 50, 26000, 21845);
   } else if (airQuality.estimatedAQI <= 100) {
-    baseHue = map(airQuality.estimatedAQI, 50, 100, 21845, 16384); // Green to yellow-green
+    baseHue = map(airQuality.estimatedAQI, 50, 100, 21845, 16384);
   } else if (airQuality.estimatedAQI <= 200) {
-    baseHue = map(airQuality.estimatedAQI, 100, 200, 16384, 4096); // Yellow to orange
+    baseHue = map(airQuality.estimatedAQI, 100, 200, 16384, 4096);
   } else {
-    baseHue = map(airQuality.estimatedAQI, 200, 500, 4096, 0); // Orange to red
+    baseHue = map(airQuality.estimatedAQI, 200, 500, 4096, 0);
   }
   
-  // Fill all LEDs with gradient from base color
   for (int i = 0; i < NUM_LEDS_AIR_QUALITY; i++) {
-    // Create subtle gradient across the bar
-    // Bottom LEDs slightly cooler, top LEDs slightly warmer
     int hueOffset = (i - NUM_LEDS_AIR_QUALITY / 2) * 500;
     int ledHue = baseHue + hueOffset;
-    
-    // Keep hue in valid range
     if (ledHue < 0) ledHue += 65536;
     if (ledHue >= 65536) ledHue -= 65536;
     
@@ -431,10 +457,9 @@ void updateAirQualityLEDs() {
 }
 
 // ==========================================
-// LCD DISPLAY FUNCTIONS
+// LCD DISPLAY
 // ==========================================
 void updateLCDDisplay(DateTime now) {
-  // Line 0: Date
   lcd.setCursor(0, 0);
   char dateBuffer[21];
   sprintf(dateBuffer, "%02d/%02d/%04d", now.day(), now.month(), now.year());
@@ -445,14 +470,12 @@ void updateLCDDisplay(DateTime now) {
   lcd.print(daysOfWeek[now.dayOfTheWeek()]);
   lcd.print("    ");
 
-  // Line 1: Time
   lcd.setCursor(0, 1);
   char timeBuffer[21];
   sprintf(timeBuffer, "Heure: %02d:%02d:%02d", now.hour(), now.minute(), now.second());
   lcd.print(timeBuffer);
   lcd.print("    ");
 
-  // Line 2: Indoor sensor
   lcd.setCursor(0, 2);
   if (indoorData.valid) {
     lcd.print("Int: ");
@@ -466,7 +489,6 @@ void updateLCDDisplay(DateTime now) {
     lcd.print("Int: ERREUR        ");
   }
 
-  // Line 3: Outdoor sensor + Air quality
   lcd.setCursor(0, 3);
   if (outdoorData.valid) {
     lcd.print("Ext:");
@@ -486,13 +508,13 @@ void displayStartupMessage(const char* message) {
   lcd.setCursor(0, 0);
   lcd.print("Smart LED Clock");
   lcd.setCursor(0, 1);
-  lcd.print("Phase 3.2");
+  lcd.print("Phase 4");
   lcd.setCursor(0, 3);
   lcd.print(message);
 }
 
 // ==========================================
-// LED CLOCK DISPLAY
+// LED CLOCK & ANIMATION (unchanged)
 // ==========================================
 void updateLEDClock(DateTime now) {
   int hour = now.hour() % 12;
@@ -526,16 +548,11 @@ void updateLEDClock(DateTime now) {
   lastSecond = second;
 }
 
-// ==========================================
-// ANIMATION FUNCTIONS
-// ==========================================
 void startAnimation() {
   Serial.println("Starting hourly animation");
-  
   lcd.clear();
   lcd.setCursor(0, 1);
   lcd.print("  Animation horaire");
-  
   isAnimationActive = true;
   animationStep = 0;
   animationHue = 0;
@@ -544,22 +561,17 @@ void startAnimation() {
 }
 
 bool updateAnimation() {
-  if (animationStep >= 100) {
-    return false;
-  }
+  if (animationStep >= 100) return false;
 
   ledsMinuteSec.clear();
-
   for (int i = animationStep % 3; i < NUM_LEDS_MINUTE_SECOND; i += 3) {
     int hue = animationHue + (i * 65536L / NUM_LEDS_MINUTE_SECOND);
     uint32_t color = ledsMinuteSec.gamma32(ledsMinuteSec.ColorHSV(hue));
     ledsMinuteSec.setPixelColor(i, color);
   }
-
   ledsMinuteSec.show();
   animationHue += 65536 / 100;
   animationStep++;
-  
   return true;
 }
 
@@ -568,9 +580,7 @@ void stopAnimation() {
   isAnimationActive = false;
   ledsMinuteSec.clear();
   ledsMinuteSec.show();
-  
   lcd.clear();
-  
   DateTime now = rtc.now();
   lastSecond = 61;
   lastMinute = 61;
@@ -579,9 +589,6 @@ void stopAnimation() {
   updateLCDDisplay(now);
 }
 
-// ==========================================
-// UTILITY FUNCTIONS
-// ==========================================
 void printDateTime(DateTime dt) {
   char buffer[20];
   sprintf(buffer, "%04d/%02d/%02d %02d:%02d:%02d", 
