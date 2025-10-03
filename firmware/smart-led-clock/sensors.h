@@ -1,15 +1,26 @@
 /**
- * Smart LED Clock - Sensors Module
+ * @file sensors.h
+ * @brief Environmental sensors module
  * 
- * Handles all sensor operations:
- * - DHT22 temperature/humidity sensors (indoor/outdoor)
- * - MQ135 air quality sensor
- * - Calculations: dew point, humidex, feels-like
+ * Manages all environmental sensing operations including temperature,
+ * humidity, and air quality monitoring.
  * 
- * Author: F. Baillon
- * Version: Phase 5
- * Date: January 2025
- * License: GPL v3.0
+ * Sensors supported:
+ * - DHT22: Temperature and humidity (indoor/outdoor)
+ * - MQ135: Air quality sensor (VOCs, CO2, NH3)
+ * 
+ * Calculated metrics:
+ * - Heat index (feels-like temperature)
+ * - Dew point
+ * - Humidex (Canadian humidity comfort index)
+ * - Air Quality Index (AQI) estimation
+ * 
+ * @author F. Baillon
+ * @version 1.0.0
+ * @date January 2025
+ * @license MIT License
+ * 
+ * Copyright (c) 2025 F. Baillon
  */
 
 #ifndef SENSORS_H

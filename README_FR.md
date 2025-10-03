@@ -1,178 +1,247 @@
-# Smart LED Clock - Horloge LED Intelligente
+# Smart LED Clock - Documentation Française 🇫🇷
 
-*Français | [English](README.md)*
+> Horloge intelligente à LED avec capteurs environnementaux et synchronisation NTP
 
-Une magnifique horloge multifonctionnelle avec affichage à anneaux LED, surveillance de température, détection de qualité de l'air et interface web de configuration.
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/fbaillon19/smart-led-clock)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+[![Arduino](https://img.shields.io/badge/Arduino-Uno%20R4%20WiFi-00979D.svg)](https://www.arduino.cc/)
 
-![Smart LED Clock](docs/images/smart-led-clock-main.jpg)
+[🇬🇧 English Version](./README_EN.md) | [📚 Documentation complète](./docs/)
 
-## 🌟 Fonctionnalités
+---
 
-- **Horloge LED Visuelle** : Anneau externe de 60 LED pour minutes/secondes, anneau interne de 12 LED pour les heures
-- **Surveillance de Température** : Température et humidité intérieure et extérieure (capteurs DHT22)
-- **Affichage Qualité de l'Air** : Indicateur visuel de qualité d'air avec barre LED colorée (capteur MQ135)
-- **Configuration Web** : Configuration et surveillance faciles via interface web intégrée
-- **Synchronisation NTP** : Synchronisation automatique quotidienne avec serveurs d'horloge atomique
-- **Modes d'Affichage Multiples** : Température, humidité, indice de chaleur, point de rosée, humidex
-- **Animations Horaires** : Belles animations colorées chaque heure
-- **Mode Nuit** : Ajustement automatique de la luminosité
-- **Contrôles Physiques** : Boutons physiques pour changer les modes d'affichage
+## 🎯 Vue d'ensemble
 
-## 🔧 Matériel Requis
+Smart LED Clock est une horloge connectée qui combine un affichage analogique élégant sur anneaux LED avec des capteurs environnementaux et une interface de contrôle intuitive.
 
-### Composants Essentiels (~136€ total)
-- **Arduino UNO R4 WiFi** (contrôleur principal)
-- **Afficheur LCD 20x4 I2C** (affichage des informations)
-- **3x Rubans LED WS2812B** : 60, 12 et 10 LED
-- **2x Capteurs DHT22** (température intérieure/extérieure)
-- **Capteur MQ135** qualité de l'air
-- **2x Boutons poussoirs** + résistances de pull-up
-- **Alimentation 5V 5A**
+### Caractéristiques principales
 
-Voir [**docs/HARDWARE.md**](docs/HARDWARE.md) pour la liste complète des composants et schémas de câblage.
+- ⏰ **Affichage analogique LED** : Deux anneaux (12 LED heures, 60 LED minutes/secondes)
+- 📺 **Écran LCD 20x4** : 3 modes d'affichage interchangeables
+- 🌡️ **Capteurs environnementaux** : Température et humidité (intérieur/extérieur)
+- 💨 **Qualité de l'air** : Capteur MQ135 avec barre LED colorée
+- 🌐 **Connectivité WiFi** : Synchronisation NTP automatique
+- 🔘 **Interface simple** : Contrôle par bouton unique
+- 🎨 **Animations** : Effet lumineux à chaque heure pile
 
-## 🚀 Démarrage Rapide
+### Aperçu des modes d'affichage
 
-1. **Cloner le dépôt**
-   ```bash
-   git clone https://github.com/yourusername/smart-led-clock.git
-   cd smart-led-clock
-   ```
-
-2. **Configurer les identifiants WiFi**
-   ```bash
-   cd firmware/smart-led-clock
-   cp secret.template.h secret.h
-   # Éditer secret.h avec vos identifiants WiFi
-   ```
-
-3. **Installer les bibliothèques Arduino** (voir guide d'installation)
-   - Adafruit NeoPixel
-   - DHT sensor library
-   - LiquidCrystal I2C
-   - OneButton
-   - NTPClient
-
-4. **Téléverser le firmware**
-   - Ouvrir `firmware/smart-led-clock/smart-led-clock.ino` dans l'IDE Arduino
-   - Sélectionner la carte "Arduino UNO R4 WiFi"
-   - Téléverser vers votre carte
-
-5. **Accéder à l'interface web**
-   - L'adresse IP sera affichée sur le LCD après démarrage
-   - Ouvrir `http://[ADRESSE_IP]` dans votre navigateur
-
-## 📖 Documentation
-
-### 🏗️ Guide de Construction
-- [**docs/HARDWARE.md**](docs/HARDWARE.md) - Composants et schémas de câblage
-- [**docs/INSTALL.md**](docs/INSTALL.md) - Guide d'installation complet étape par étape
-
-### 🧪 Tests
-- [**testing/README.md**](testing/README.md) - Procédures et outils de test
-- [**testing/hardware_tests.md**](testing/hardware_tests.md) - Tests de validation matérielle
-- [**testing/software_tests.md**](testing/software_tests.md) - Procédures de test logiciel
-
-### 🔧 Développement
-- Codes de test individuels disponibles dans `testing/test_codes/`
-- Guide de dépannage dans `testing/troubleshooting.md`
-
-## 🎯 Niveau de Difficulté
-
-**Moyen** - Nécessite des connaissances de base Arduino et compétences de soudure
-- Compréhension de base de l'électronique
-- Expérience de soudure recommandée
-- Familiarité avec l'IDE Arduino
-- Connaissances de configuration réseau WiFi
-
-## 🌐 Fonctionnalités Interface Web
-
-- Affichage en temps réel des données capteurs
-- Contrôle de luminosité LED
-- Configuration mode nuit
-- Paramètres des modes d'affichage
-- Surveillance de l'état système
-- Configuration réseau
-
-## 🛠️ Structure du Projet
-
+**Mode 1 - Température & Humidité** (défaut)
 ```
-smart-led-clock/
-├── firmware/smart-led-clock/    # Firmware Arduino
-├── docs/                        # Documentation
-├── testing/                     # Codes de test et procédures
-├── web-interface/              # Ressources interface web
-└── README.md                   # Ce fichier
+03/10/2025        Sam
+Heure: 14:32:45
+Int:22.5°C   65%
+Ext:18.3°C AQI:42
 ```
 
-## 🤝 Contribuer
+**Mode 2 - Températures ressenties**
+```
+Temp. Ressentie
+Exterieur: 18.3°C
+Ressenti : 17.1°C
+Pt rosee : 12.4°C
+```
 
-Les contributions sont les bienvenues ! Veuillez lire nos directives de contribution et :
+**Mode 3 - Indice Humidex**
+```
+Indice Humidex
+Humidex:        23
+Inconfort certain
+Exterieur uniquement
+```
 
-1. Forker le projet
-2. Créer une branche de fonctionnalité (`git checkout -b feature/fonctionnalite-geniale`)
-3. Commiter vos changements (`git commit -m 'Ajouter fonctionnalité géniale'`)
-4. Pousser vers la branche (`git push origin feature/fonctionnalite-geniale`)
+---
+
+## ⚡ Quick Start
+
+### 1. Matériel requis
+
+**Composants principaux :**
+- Arduino Uno R4 WiFi
+- Écran LCD I2C 20x4
+- 2× DHT22 (température/humidité)
+- Capteur MQ135 (qualité air)
+- 3× Anneaux/barres LED NeoPixel (12, 60, 10 LED)
+- Module RTC DS3231
+- Bouton poussoir
+
+📋 **[Liste complète et schémas → docs/HARDWARE.md](./docs/HARDWARE.md)**
+
+### 2. Installation
+
+```bash
+# 1. Cloner le dépôt
+git clone https://github.com/fbaillon19/smart-led-clock.git
+cd smart-led-clock
+
+# 2. Créer le fichier de configuration WiFi
+cp firmware/smart-led-clock/secrets.template.h firmware/smart-led-clock/secrets.h
+# Éditer secrets.h avec vos identifiants WiFi
+
+# 3. Ouvrir dans Arduino IDE
+# File: firmware/smart-led-clock/smart-led-clock.ino
+
+# 4. Installer les bibliothèques requises
+# Voir docs/INSTALL.md pour la liste complète
+
+# 5. Compiler et téléverser
+```
+
+🔧 **[Guide d'installation détaillé → docs/INSTALL.md](./docs/INSTALL.md)**
+
+### 3. Configuration WiFi
+
+Éditer `firmware/smart-led-clock/secrets.h` :
+```cpp
+const char* ssid = "VotreSSID";
+const char* pass = "VotreMotDePasse";
+```
+
+### 4. Premier démarrage
+
+1. Connecter l'Arduino au PC via USB
+2. Ouvrir le moniteur série (115200 bauds)
+3. Observer la séquence d'initialisation
+4. L'horloge se synchronise automatiquement via NTP
+
+---
+
+## 🎮 Utilisation
+
+### Contrôle par bouton
+
+| Action | Résultat |
+|--------|----------|
+| **Clic court** (LCD éteint) | Rallume le rétroéclairage |
+| **Clic court** (LCD allumé) | Change de mode d'affichage |
+| **Appui long** (>2s) | Retour au mode par défaut |
+
+### Fonctionnalités automatiques
+
+- 💡 **Rétroéclairage LCD** : Extinction automatique après 30 secondes
+- 🌐 **Synchronisation NTP** : Quotidienne à 1h01 du matin
+- 🎨 **Animation** : À chaque heure pile (14:00, 15:00...)
+- 📊 **Mise à jour capteurs** : Toutes les 2 secondes
+
+---
+
+## 🏗️ Architecture logicielle
+
+Le projet utilise une **architecture modulaire** :
+
+```
+firmware/smart-led-clock/
+├── smart-led-clock.ino      # Programme principal
+├── config.h                 # Configuration centralisée
+├── rtc.h / rtc.cpp         # RTC + WiFi + NTP
+├── sensors.h / sensors.cpp  # Capteurs (DHT22, MQ135)
+├── display.h / display.cpp  # LCD et modes d'affichage
+├── leds.h / leds.cpp       # Anneaux LED + animations
+├── button.h / button.cpp   # Gestion bouton
+└── secrets.h               # WiFi (à créer)
+```
+
+### Avantages de l'architecture
+
+✅ **Modulaire** : Chaque fonctionnalité dans son propre module  
+✅ **Maintenable** : Code organisé et commenté  
+✅ **Évolutif** : Facile d'ajouter de nouvelles fonctionnalités  
+✅ **Testable** : Modules indépendants  
+
+---
+
+## ⚙️ Configuration
+
+### Personnalisation rapide
+
+Éditer `config.h` pour modifier :
+
+**Fuseau horaire**
+```cpp
+#define TIME_ZONE_OFFSET  2  // UTC+2 (Paris)
+```
+
+**Timeout rétroéclairage LCD**
+```cpp
+#define LCD_BACKLIGHT_TIMEOUT  30000  // 30 secondes
+```
+
+**Couleurs des LED**
+```cpp
+#define COLOR_HOUR_R    0    // Rouge
+#define COLOR_HOUR_G    0    // Vert
+#define COLOR_HOUR_B    127  // Bleu
+```
+
+**Heure de synchronisation NTP**
+```cpp
+#define NTP_SYNC_HOUR    1   // 1h du matin
+#define NTP_SYNC_MINUTE  1   // à 1h01
+```
+
+---
+
+## 🔧 Dépannage
+
+### Problèmes courants
+
+**L'horloge ne se connecte pas au WiFi**
+- Vérifier `secrets.h` (SSID et mot de passe corrects)
+- S'assurer que le réseau est en 2.4 GHz (pas 5 GHz)
+- Vérifier la portée WiFi
+
+**Les capteurs DHT22 retournent des erreurs**
+- Vérifier les connexions (VCC, GND, Data)
+- Respecter le délai entre lectures (2 secondes minimum)
+- Tester avec un sketch simple de test
+
+**L'écran LCD n'affiche rien**
+- Vérifier l'adresse I2C (scanner I2C si besoin)
+- Ajuster le contraste (potentiomètre au dos du module)
+- Vérifier l'alimentation 5V
+
+**Les LED ne s'allument pas**
+- Vérifier l'alimentation (5V suffisant pour tous les LED)
+- Respecter l'ordre Data In → Data Out
+- Tester avec un sketch NeoPixel simple
+
+📖 **[Guide de dépannage complet → docs/INSTALL.md](./docs/INSTALL.md#dépannage)**
+
+---
+
+## 📚 Documentation
+
+- 📘 **[HARDWARE.md](./docs/HARDWARE.md)** - Liste matériel, schémas de câblage, connexions
+- 📗 **[INSTALL.md](./docs/INSTALL.md)** - Installation détaillée, bibliothèques, configuration
+- 📕 **[CHANGELOG.md](./CHANGELOG.md)** - Historique des versions et modifications
+- 📄 **[LICENSE](./LICENSE)** - Licence MIT complète
+
+---
+
+## 🤝 Contribution
+
+Les contributions sont les bienvenues !
+
+1. Fork le projet
+2. Créer une branche (`git checkout -b feature/amelioration`)
+3. Commiter (`git commit -m 'Ajout fonctionnalité'`)
+4. Push (`git push origin feature/amelioration`)
 5. Ouvrir une Pull Request
 
-## 🐛 Problèmes et Support
-
-- **Problèmes matériels** : Consultez `testing/troubleshooting.md`
-- **Bugs logiciels** : Ouvrez un issue avec description détaillée
-- **Demandes de fonctionnalités** : Discussions bienvenues dans la section Issues
+---
 
 ## 📄 Licence
 
-Ce projet est sous licence MIT - voir le fichier [LICENSE](LICENSE) pour les détails.
-
-## 👨‍💻 Auteur
-
-**F. Baillon** - *Travail initial* - fbaillon@gmail.com
-
-## 🙏 Remerciements
-
-- Communauté Arduino pour les bibliothèques et exemples
-- Adafruit pour d'excellentes bibliothèques LED
-- Contributeurs et testeurs
+Ce projet est sous licence **MIT** - voir le fichier [LICENSE](./LICENSE) pour plus de détails.
 
 ---
 
-⭐ **Si vous trouvez ce projet utile, merci de lui donner une étoile !**
+## 👤 Auteur
 
-## 📋 Notes Spécifiques Françaises
-
-### Réglementations
-- **Alimentation** : Utiliser uniquement des alimentations certifiées CE
-- **WiFi** : Compatible avec les fréquences 2.4GHz autorisées en France
-- **Sécurité** : Respecter les normes électriques domestiques françaises
-
-### Fournisseurs Recommandés (France)
-- **Composants électroniques** : Gotronic, Conrad, RS Components
-- **Arduino et shields** : Arduino.cc (distributeurs officiels)
-- **Impression 3D** : Sculpteo, 3D Hubs pour boîtiers personnalisés
-
-### Support Communautaire Francophone
-- **Forum Arduino France** : arduino-france.com
-- **Discord Makers France** : Communautés de makers francophones
-- **FabLabs** : Espaces de fabrication collaborative près de chez vous
-
-### Configuration Spécifique France
-```cpp
-// Dans config.h pour la France :
-#define TIME_ZONE_OFFSET        1     // UTC+1 (heure d'hiver)
-// ou
-#define TIME_ZONE_OFFSET        2     // UTC+2 (heure d'été)
-
-// Serveurs NTP français recommandés :
-const char* ntp_server_primary = "0.fr.pool.ntp.org";
-const char* ntp_server_secondary = "1.fr.pool.ntp.org";
-```
-
-### Unités de Mesure
-- **Température** : Celsius (par défaut)
-- **Dimensions** : Métriques (cm, mm)
-- **Alimentation** : 230V AC → 5V DC (adaptateur secteur)
+**F. Baillon**
+- GitHub: [@fbaillon19](https://github.com/fbaillon19)
 
 ---
 
-*Ce projet a été développé avec ❤️ en France*
+**Version :** 1.0.0  
+**Dernière mise à jour :** Janvier 2025

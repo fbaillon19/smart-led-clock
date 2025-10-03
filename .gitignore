@@ -1,4 +1,80 @@
-# Fichiers de credentials secrets.h
+# Smart LED Clock - Git Ignore File
+
+# ==========================================
+# Secrets and sensitive information
+# ==========================================
+# IMPORTANT: Never commit WiFi credentials
+firmware/smart-led-clock/secrets.h
+
+# ==========================================
+# Arduino IDE files
+# ==========================================
+*.hex
+*.eep
+*.elf
+*.bin
+*.lss
+*.map
+*.sym
+*.lst
+
+# ==========================================
+# Build directories
+# ==========================================
+build/
+.build/
+*.o
+*.a
+
+# ==========================================
+# macOS
+# ==========================================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ==========================================
+# Windows
+# ==========================================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ==========================================
+# Linux
+# ==========================================
+*~
+.directory
+.Trash-*
+
+# ==========================================
+# IDEs
+# ==========================================
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+*.iml
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ==========================================
+# Logs
+# ==========================================
+*.log
+
+# ==========================================
+# Temporary files
+# ==========================================
+*.tmp
+*.bak
+*.swp
+*~# Fichiers de credentials secrets.h
 firmware/smart-led-clock/secrets.h
 
 # Fichiers de compilation Arduino

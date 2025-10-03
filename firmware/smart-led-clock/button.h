@@ -1,14 +1,21 @@
 /**
- * Smart LED Clock - Button Module
+ * @file button.h
+ * @brief Button input management module
  * 
- * Handles button input with OneButton library:
- * - Single click: Wake LCD or cycle display modes
- * - Long press: Return to default mode
+ * Handles button input with debouncing and multiple press types.
+ * Uses the OneButton library for reliable button detection.
  * 
- * Author: F. Baillon
- * Version: Phase 5
- * Date: January 2025
- * License: GPL v3.0
+ * Button actions:
+ * - Short press (LCD off): Wake up LCD backlight
+ * - Short press (LCD on): Cycle through display modes
+ * - Long press (>2s): Return to default display mode
+ * 
+ * @author F. Baillon
+ * @version 1.0.0
+ * @date January 2025
+ * @license MIT License
+ * 
+ * Copyright (c) 2025 F. Baillon
  */
 
 #ifndef BUTTON_H

@@ -1,39 +1,36 @@
 /**
- * Smart LED Clock - Phase 5: Simplified Button Control
- * Main File (Refactored)
+ * @file smart-led-clock.ino
+ * @brief Smart LED Clock - Main Program
  * 
- * Single button control with LCD backlight management:
+ * A connected clock combining analog LED display with environmental monitoring.
+ * Features include WiFi/NTP sync, dual temperature sensors, air quality monitoring,
+ * and multi-mode LCD display with automatic backlight management.
  * 
- * Button behavior:
- * - Click when LCD OFF: Wake LCD (no mode change)
- * - Click when LCD ON: Cycle through display modes
- * - Long press: Return to default mode
- * 
- * Display modes:
- * 1. Temperature & Humidity (default)
- * 2. Feels-like & Dew point
- * 3. Humidex
- * 
- * LCD backlight:
- * - Auto-off after 30 seconds of inactivity
- * - Wakes on button press
- * 
- * Components:
+ * Hardware:
+ * - Arduino Uno R4 WiFi
  * - DS3231 RTC module
- * - 12 LED ring (hours)
- * - 60 LED ring (minutes/seconds)
- * - 10 LED bar (air quality indicator)
- * - 20x4 I2C LCD display
- * - 2x DHT22 sensors (indoor/outdoor)
+ * - LCD 20x4 I2C display
+ * - 2× DHT22 temperature/humidity sensors
  * - MQ135 air quality sensor
- * - Push button (mode control)
- * - WiFi (Arduino Uno R4 WiFi)
- * - NTP time synchronization
+ * - 3× NeoPixel LED strips (12, 60, 10 LEDs)
+ * - Push button for mode control
  * 
- * Author: F. Baillon
- * Version: Phase 5
- * Date: January 2025
- * License: GPL v3.0
+ * @author F. Baillon
+ * @version 1.0.0
+ * @date January 2025
+ * @license MIT License
+ * 
+ * Copyright (c) 2025 F. Baillon
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  */
 
 #include <Wire.h>

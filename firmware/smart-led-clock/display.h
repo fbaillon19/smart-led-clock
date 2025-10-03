@@ -1,15 +1,27 @@
 /**
- * Smart LED Clock - Display Module
+ * @file display.h
+ * @brief LCD display management module
  * 
- * Handles all LCD display operations:
- * - Multiple display modes (temp/humidity, feels-like, humidex)
- * - Backlight management with auto-off
+ * Handles all LCD display operations including multiple display modes,
+ * automatic backlight management, and optimized screen updates.
+ * 
+ * Display modes:
+ * - MODE_TEMP_HUMIDITY: Temperature and humidity display (default)
+ * - MODE_FEELS_LIKE: Feels-like temperature and dew point
+ * - MODE_HUMIDEX: Humidex comfort index
+ * 
+ * Features:
+ * - Automatic backlight timeout (configurable)
+ * - Optimized updates (only refresh changed data)
+ * - Custom degree symbol character
  * - Startup messages
  * 
- * Author: F. Baillon
- * Version: Phase 5
- * Date: January 2025
- * License: GPL v3.0
+ * @author F. Baillon
+ * @version 1.0.0
+ * @date January 2025
+ * @license MIT License
+ * 
+ * Copyright (c) 2025 F. Baillon
  */
 
 #ifndef DISPLAY_H

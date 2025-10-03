@@ -1,10 +1,13 @@
 /**
- * Smart LED Clock - Button Module Implementation
+ * @file button.cpp
+ * @brief Button input management implementation
  * 
- * Author: F. Baillon
- * Version: Phase 5
- * Date: January 2025
- * License: GPL v3.0
+ * @author F. Baillon
+ * @version 1.0.0
+ * @date January 2025
+ * @license MIT License
+ * 
+ * Copyright (c) 2025 F. Baillon
  */
 
 #include "button.h"
@@ -20,6 +23,15 @@ OneButton button;
 // FUNCTION IMPLEMENTATIONS
 // ==========================================
 
+/**
+ * @brief Initialize button with callbacks
+ * 
+ * Configures the button pin with internal pull-up resistor
+ * and attaches callback functions for different press types.
+ * 
+ * Button is configured as active LOW (pressed = LOW signal).
+ * Uses OneButton library for debouncing and press detection.
+ */
 void initButton() {
   button.setup(PIN_BUTTON, INPUT_PULLUP, true);
   button.attachClick(buttonClick);
@@ -28,6 +40,21 @@ void initButton() {
   Serial.println("Button initialized on pin " + String(PIN_BUTTON));
 }
 
+/**
+ * @brief Callback for button single click
+ * 
+ * Behavior depends on LCD backlight state:
+ * - If LCD is OFF: Turn on backlight only (no mode change)
+ * - If LCD is ON: Cycle to next display mode
+ * 
+ * Cycling order:
+ * 1. MODE_TEMP_HUMIDITY (default)
+ * 2. MODE_FEELS_LIKE
+ * 3. MODE_HUMIDEX
+ * Then loops back to MODE_TEMP_HUMIDITY
+ * 
+ * Updates lastLCDActivity to reset auto-off timer.
+ */
 void buttonClick() {
   lastLCDActivity = millis();
   
@@ -45,6 +72,16 @@ void buttonClick() {
   clearLCD();
 }
 
+/**
+ * @brief Callback for button long press
+ * 
+ * Returns to default display mode (MODE_TEMP_HUMIDITY).
+ * If LCD backlight is off, turns it on first.
+ * 
+ * Long press duration: >2 seconds (OneButton default)
+ * 
+ * Updates lastLCDActivity to reset auto-off timer.
+ */
 void buttonLongPress() {
   lastLCDActivity = millis();
   
@@ -60,6 +97,18 @@ void buttonLongPress() {
   clearLCD();
 }
 
+/**
+ * @brief Update button state (call in main loop)
+ * 
+ * Must be called frequently (every loop iteration) to ensure
+ * proper button debouncing and press detection.
+ * 
+ * The OneButton library internally handles:
+ * - Debouncing
+ * - Click detection
+ * - Long press detection
+ * - Double click (not used in this project)
+ */
 void updateButton() {
   button.tick();
 }

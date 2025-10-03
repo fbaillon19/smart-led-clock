@@ -1,13 +1,31 @@
 /**
- * Smart LED Clock - Configuration Header
+ * @file config.h
+ * @brief Configuration header for Smart LED Clock
  * 
- * Centralizes all configuration constants, pin definitions,
- * and data structures used throughout the project.
+ * Centralizes all configuration constants, pin definitions, and data structures.
+ * This file should be the first to include when modifying hardware connections
+ * or adjusting system parameters.
  * 
- * Author: F. Baillon
- * Version: Phase 5
- * Date: January 2025
- * License: GPL v3.0
+ * @author F. Baillon
+ * @version 1.0.0
+ * @date January 2025
+ * @license MIT License
+ * 
+ * Copyright (c) 2025 F. Baillon
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
  */
 
 #ifndef CONFIG_H
@@ -74,32 +92,49 @@
 // ==========================================
 // DISPLAY MODES
 // ==========================================
+/**
+ * @enum DisplayMode
+ * @brief Available LCD display modes
+ * 
+ * Users can cycle through these modes using the button:
+ * - MODE_TEMP_HUMIDITY: Shows indoor/outdoor temperature and humidity
+ * - MODE_FEELS_LIKE: Shows feels-like temperature and dew point
+ * - MODE_HUMIDEX: Shows Canadian humidity comfort index
+ */
 enum DisplayMode {
-  MODE_TEMP_HUMIDITY = 0,  // Default: Temperature & Humidity
-  MODE_FEELS_LIKE = 1,     // Feels-like & Dew point
-  MODE_HUMIDEX = 2,        // Humidex index
-  MODE_COUNT = 3           // Total number of modes
+  MODE_TEMP_HUMIDITY = 0,  ///< Temperature & Humidity (default)
+  MODE_FEELS_LIKE = 1,     ///< Feels-like & Dew point
+  MODE_HUMIDEX = 2,        ///< Humidex comfort index
+  MODE_COUNT = 3           ///< Total number of modes
 };
 
 // ==========================================
 // SENSOR DATA STRUCTURES
 // ==========================================
+/**
+ * @struct SensorData
+ * @brief Temperature and humidity sensor data container
+ */
 struct SensorData {
-  float temperature;
-  float humidity;
-  float feelsLike;
-  float dewPoint;
-  int humidex;
-  bool valid;
-  unsigned long lastUpdate;
+  float temperature;        ///< Temperature in Celsius
+  float humidity;          ///< Relative humidity in %
+  float feelsLike;         ///< Feels-like temperature in Celsius
+  float dewPoint;          ///< Dew point in Celsius
+  int humidex;            ///< Canadian humidex index
+  bool valid;             ///< Data validity flag
+  unsigned long lastUpdate; ///< Timestamp of last update (millis)
 };
 
+/**
+ * @struct AirQualityData
+ * @brief Air quality sensor data container
+ */
 struct AirQualityData {
-  int rawADC;
-  int estimatedAQI;
-  const char* quality;
-  bool valid;
-  unsigned long lastUpdate;
+  int rawADC;              ///< Raw ADC value from MQ135
+  int estimatedAQI;        ///< Estimated Air Quality Index (0-500)
+  const char* quality;     ///< Quality description string
+  bool valid;             ///< Data validity flag
+  unsigned long lastUpdate; ///< Timestamp of last update (millis)
 };
 
 // ==========================================

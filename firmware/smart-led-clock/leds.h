@@ -1,16 +1,27 @@
 /**
- * Smart LED Clock - LEDs Module
+ * @file leds.h
+ * @brief LED rings and animations module
  * 
- * Handles all LED operations:
- * - Hour ring (12 LEDs)
- * - Minute/Second ring (60 LEDs)
- * - Air quality bar (10 LEDs)
- * - Hourly animations
+ * Manages all LED operations including analog clock display and animations.
  * 
- * Author: F. Baillon
- * Version: Phase 5
- * Date: January 2025
- * License: GPL v3.0
+ * LED strips:
+ * - Hour ring: 12 NeoPixel LEDs (blue)
+ * - Minute/Second ring: 60 NeoPixel LEDs (red/green)
+ * - Air quality bar: 10 NeoPixel LEDs (color gradient)
+ * 
+ * Features:
+ * - Analog clock display with hour/minute/second hands
+ * - Overlap color for minute/second coincidence
+ * - Hourly color animation
+ * - Air quality visualization with dynamic color gradient
+ * - Brightness control
+ * 
+ * @author F. Baillon
+ * @version 1.0.0
+ * @date January 2025
+ * @license MIT License
+ * 
+ * Copyright (c) 2025 F. Baillon
  */
 
 #ifndef LEDS_H
