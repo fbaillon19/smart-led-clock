@@ -18,6 +18,8 @@
 // ==========================================
 LiquidCrystal_I2C lcd(LCD_I2C_ADDRESS, LCD_COLUMNS, LCD_ROWS);
 
+bool forceDisplay;
+
 // Custom degree symbol for LCD
 byte degreeSymbol[8] = {
   0b01100, 0b10010, 0b10010, 0b01100,
@@ -89,10 +91,10 @@ void updateLCDDisplay(DateTime now) {
  * 
  * Example display:
  * ```
- * 03/10/2025        Sam
- * Heure: 14:32:45
- * Int:22.5°C   65%
- * Ext:18.3°C AQI:42
+ *   SAM 20 DEC 2025
+ *       14:32:45
+ * Int:22.5°C  65%  AQI
+ * Ext:18.3°C  55%   42
  * ```
  * 
  * @param now Current DateTime from RTC
@@ -102,23 +104,31 @@ void displayTempHumidity(DateTime now) {
   static char lastTimeBuffer[21] = "";
   static char lastIndoorBuffer[21] = "";
   static char lastOutdoorBuffer[21] = "";
+  char endBuffer[8];
+
+  if (forceDisplay) {
+    strcpy(lastDateBuffer, "");
+    strcpy(lastTimeBuffer, "");
+    strcpy(lastIndoorBuffer, "");
+    strcpy(lastOutdoorBuffer, "");
+    forceDisplay = false;
+  }
   
   // Line 0: Date + Day (only update if changed)
+  const char* days[] = {"DIM", "LUN", "MAR", "MER", "JEU", "VEN", "SAM"};
+  const char* months[] = {"JANV", "FEV", "MARS", "AVR", "MAI", "JUIN", "JUIL", "AOUT", "SEPT", "OCT", "NOV", "DEC"};
   char dateBuffer[21];
-  sprintf(dateBuffer, "%02d/%02d/%04d", now.day(), now.month(), now.year());
-  const char* days[] = {"Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"};
-  char fullDateBuffer[21];
-  sprintf(fullDateBuffer, "%s        %s", dateBuffer, days[now.dayOfTheWeek()]);
-  
-  if (strcmp(fullDateBuffer, lastDateBuffer) != 0) {
+  sprintf(dateBuffer, "  %s %02d %s %04d", days[now.dayOfTheWeek()], now.day(), months[now.month()], now.year());
+  if (strlen(dateBuffer) < 20) strcat(dateBuffer, " ");
+  if (strcmp(dateBuffer, lastDateBuffer) != 0) {
     lcd.setCursor(0, 0);
-    lcd.print(fullDateBuffer);
-    strcpy(lastDateBuffer, fullDateBuffer);
+    lcd.print(dateBuffer);
+    strcpy(lastDateBuffer, dateBuffer);
   }
 
   // Line 1: Time (always update for seconds)
   char timeBuffer[21];
-  sprintf(timeBuffer, "Heure: %02d:%02d:%02d   ", now.hour(), now.minute(), now.second());
+  sprintf(timeBuffer, "      %02d:%02d:%02d      ", now.hour(), now.minute(), now.second());
   if (strcmp(timeBuffer, lastTimeBuffer) != 0) {
     lcd.setCursor(0, 1);
     lcd.print(timeBuffer);
@@ -128,52 +138,49 @@ void displayTempHumidity(DateTime now) {
   // Line 2: Indoor (only update if data changed)
   char indoorBuffer[21];
   if (indoorData.valid) {
-    sprintf(indoorBuffer, "Int:%4.1f%cC   %3d%%  ", 
-            indoorData.temperature, 
-            223, // degree symbol placeholder for comparison
-            (int)indoorData.humidity);
+    sprintf(indoorBuffer, "INT:%.1f@C  ", indoorData.temperature); // '@' degree symbol placeholder for comparison
+    if (strlen(indoorBuffer) < 12)  strcat(indoorBuffer, " ");
+    if (strlen(indoorBuffer) < 13)  strcat(indoorBuffer, " ");
+    sprintf(endBuffer, "%2d%% AQI", (int)indoorData.humidity);
+    strcat(indoorBuffer, endBuffer);
   } else {
-    sprintf(indoorBuffer, "Int: ERREUR         ");
+    sprintf(indoorBuffer, "INT: ERREUR      AQI");
   }
-  
   if (strcmp(indoorBuffer, lastIndoorBuffer) != 0) {
-    lcd.setCursor(0, 2);
-    lcd.print("Int:");
-    if (indoorData.valid) {
-      lcd.print(indoorData.temperature, 1);
-      lcd.write(byte(0)); // Custom degree symbol
-      lcd.print("C   ");
-      lcd.print((int)indoorData.humidity);
-      lcd.print("%  ");
-    } else {
-      lcd.print(" ERREUR         ");
-    }
     strcpy(lastIndoorBuffer, indoorBuffer);
+    lcd.setCursor(0, 2);
+    char charSpe[] = "@";             // '@' degree symbol placeholder to substitute
+    char *p = strtok(indoorBuffer, charSpe);
+    lcd.print(p);
+    lcd.write(byte(0));               // Custom degree symbol
+    p = strtok(NULL, charSpe);
+    lcd.print(p);
   }
 
   // Line 3: Outdoor + AQI (only update if data changed)
   char outdoorBuffer[21];
   if (outdoorData.valid) {
-    sprintf(outdoorBuffer, "Ext:%4.1f AQI:%3d", 
-            outdoorData.temperature, 
-            airQuality.estimatedAQI);
+    sprintf(outdoorBuffer, "EXT:%.1f@C  ", outdoorData.temperature); // '@' degree symbol placeholder for comparison
+    if (strlen(outdoorBuffer) < 12)  strcat(outdoorBuffer, " ");
+    if (strlen(outdoorBuffer) < 13)  strcat(outdoorBuffer, " ");
+    sprintf(endBuffer, "%2d%% ", (int)outdoorData.humidity);
+    if (strlen(endBuffer) < 3) strcat(endBuffer, " ");
+    strcat(outdoorBuffer, endBuffer);
+    if (strlen(endBuffer) < 3)   strcat(outdoorBuffer, " ");
+    sprintf(endBuffer, "%3d", airQuality.estimatedAQI);
+    strcat(outdoorBuffer, endBuffer);
   } else {
-    sprintf(outdoorBuffer, "Ext:ERR  AQI:---    ");
+    sprintf(outdoorBuffer, "EXT: ERREUR      ---");
   }
-  
   if (strcmp(outdoorBuffer, lastOutdoorBuffer) != 0) {
-    lcd.setCursor(0, 3);
-    lcd.print("Ext:");
-    if (outdoorData.valid) {
-      lcd.print(outdoorData.temperature, 1);
-      lcd.write(byte(0)); // Custom degree symbol
-      lcd.print(" AQI:");
-      lcd.print(airQuality.estimatedAQI);
-      lcd.print("   ");
-    } else {
-      lcd.print("ERR  AQI:---    ");
-    }
     strcpy(lastOutdoorBuffer, outdoorBuffer);
+    lcd.setCursor(0, 3);
+    char charSpe[] = "@";             // '@' degree symbol placeholder to substitute
+    char *p = strtok(outdoorBuffer, charSpe);
+    lcd.print(p);
+    lcd.write(byte(0));               // Custom degree symbol
+    p = strtok(NULL, charSpe);
+    lcd.print(p);
   }
 }
 
@@ -200,38 +207,22 @@ void displayTempHumidity(DateTime now) {
  * @param now Current DateTime from RTC (unused but kept for consistency)
  */
 void displayFeelsLike(DateTime now) {
-  lcd.setCursor(0, 0);
-  lcd.print("Temp. Ressentie     ");
+  lcd.setCursor(0, 0);              // LCD line 1
+  lcd.print("  TEMP. RESSENTIE   ");
 
-  lcd.setCursor(0, 1);
-  if (outdoorData.valid) {
-    lcd.print("Exterieur: ");
-    lcd.print(outdoorData.temperature, 1);
-    lcd.write(byte(0));
-    lcd.print("C  ");
-  } else {
-    lcd.print("Exterieur: ERREUR   ");
-  }
+  lcd.setCursor(0, 1);              // LCD line 2
+  lcd.print("EXTERIEURE: ");
+  displayTempCelcius(outdoorData.temperature);
 
-  lcd.setCursor(0, 2);
-  if (outdoorData.valid) {
-    lcd.print("Ressenti : ");
-    lcd.print(outdoorData.feelsLike, 1);
-    lcd.write(byte(0));
-    lcd.print("C  ");
-  } else {
-    lcd.print("Ressenti : ERREUR   ");
-  }
+  lcd.setCursor(0, 2);              // LCD line 3
+  lcd.print(" RESSENTIE: ");
+  displayTempCelcius(outdoorData.feelsLike);
 
-  lcd.setCursor(0, 3);
-  if (outdoorData.valid) {
-    lcd.print("Pt rosee : ");
-    lcd.print(outdoorData.dewPoint, 1);
-    lcd.write(byte(0));
-    lcd.print("C  ");
-  } else {
-    lcd.print("Pt rosee : ERREUR   ");
-  }
+  lcd.setCursor(0, 3);              // LCD line 4
+  lcd.print("  PT ROSEE: ");
+  displayTempCelcius(outdoorData.dewPoint);
+
+  forceDisplay = true;
 }
 
 /**
@@ -247,18 +238,18 @@ void displayFeelsLike(DateTime now) {
  * - < 20: "Pas d'inconfort"
  * - 20-29: "Peu d'inconfort"
  * - 30-39: "Inconfort certain"
- * - 40-44: "Eviter efforts"
- * - ≥ 45: "Danger chaleur"
+ * - 40-44: "Eviter les efforts"
+ * - ≥ 45: "Danger coup chaleur"
  * 
  * Only updates description when humidex changes by ±2 or more
  * to reduce unnecessary LCD updates.
  * 
  * Example display:
  * ```
- * Indice Humidex
- * Humidex:        23
- * Peu d'inconfort
- * Exterieur uniquement
+ *    INDICE HUMIDEX
+ *          23
+ *   PEU D'INCONFORT
+ * EXTERIEUR UNIQUMENT
  * ```
  * 
  * @param now Current DateTime from RTC (unused but kept for consistency)
@@ -266,37 +257,41 @@ void displayFeelsLike(DateTime now) {
 void displayHumidex(DateTime now) {
   static int lastHumidex = -999;
   
-  lcd.setCursor(0, 0);
-  lcd.print("Indice Humidex      ");
-
-  lcd.setCursor(0, 1);
-  if (outdoorData.valid) {
-    lcd.print("Humidex:        ");
-    lcd.setCursor(9, 1);
-    lcd.print(outdoorData.humidex);
-    lcd.print("  ");
-  } else {
-    lcd.print("Humidex: ERREUR     ");
+  if (forceDisplay) {
+    lastHumidex = -999;
+    forceDisplay = false;
   }
-
+  
   // Only update description if humidex changed significantly (±2)
-  if (outdoorData.valid && abs(outdoorData.humidex - lastHumidex) >= 2) {
-    lcd.setCursor(0, 2);
-    const char* desc = getHumidexDescription(outdoorData.humidex);
-    lcd.print(desc);
-    // Pad remaining line with spaces
-    int len = strlen(desc);
-    for (int i = len; i < LCD_COLUMNS; i++) {
-      lcd.print(" ");
+  if (abs(outdoorData.humidex - lastHumidex) >= 2) {
+    lcd.setCursor(0, 0);              // LCD line 1
+    lcd.print("   INDICE HUMIDEX   ");
+
+    lcd.setCursor(0, 1);              // LCD line 2
+    if (outdoorData.valid) {
+      lcd.print("         ");
+      lcd.setCursor(9, 1);
+      lcd.print(outdoorData.humidex);
+      lcd.print("        ");
+      if (outdoorData.humidex < 100) lcd.print(" ");
+    } else {
+      lcd.print("       ERREUR       ");
     }
-    lastHumidex = outdoorData.humidex;
-  } else if (!outdoorData.valid) {
-    lcd.setCursor(0, 2);
-    lcd.print("                    ");
+
+    lcd.setCursor(0, 2);              // LCD line 3
+    // Only update description if humidex changed significantly (±2)
+    if (outdoorData.valid) {
+      lcd.print(getHumidexDescription(outdoorData.humidex));
+      lastHumidex = outdoorData.humidex;
+    } else if (!outdoorData.valid) {
+      lcd.print("                    ");
+    }
+
+    lcd.setCursor(0, 3);              // LCD line 4
+    lcd.print("EXTERIEUR UNIQUEMENT");
   }
 
-  lcd.setCursor(0, 3);
-  lcd.print("Exterieur uniquement");
+  forceDisplay = true;
 }
 
 /**
@@ -315,11 +310,36 @@ void displayHumidex(DateTime now) {
  * @return Pointer to description string (French)
  */
 const char* getHumidexDescription(int humidex) {
-  if (humidex < 20) return "Pas d'inconfort";
-  if (humidex < 30) return "Peu d'inconfort";
-  if (humidex < 40) return "Inconfort certain";
-  if (humidex < 45) return "Eviter efforts";
-  return "Danger chaleur";
+  if (humidex < 20) return "  PAS D'INCONFORT   ";
+  if (humidex < 30) return "  PEU D'INCONFORT   ";
+  if (humidex < 40) return " INCONFORT CERTAIN  ";
+  if (humidex < 45) return " EVITER LES EFFORTS ";
+  return "DANGER COUP CHALEUR ";
+}
+
+/**
+ * @brief Display temperature value
+ * 
+ * Display the temperature value from different mode.
+ * 
+ * Example display:
+ * ```
+ * (-)xx°C
+ * ```
+ * 
+ * @param temperature temperature to display
+ */
+void displayTempCelcius(float temperature) {
+
+  if (outdoorData.valid) {
+    lcd.print(temperature, 1);
+    lcd.write(byte(0));
+    lcd.print("C  ");
+    if (abs(temperature) < 10)   lcd.print(" ");
+    if (temperature < 0)         lcd.print(" ");
+  } else {
+    lcd.print("ERREUR   ");
+  }
 }
 
 /**
@@ -327,7 +347,7 @@ const char* getHumidexDescription(int humidex) {
  * 
  * Shows standardized startup screen with:
  * - Line 0: "Smart LED Clock"
- * - Line 1: "Phase 5 - Final"
+ * - Line 1: "               "
  * - Line 2: (empty)
  * - Line 3: Custom message (padded to full line)
  * 
@@ -340,7 +360,7 @@ void displayStartupMessage(const char* message) {
   lcd.setCursor(0, 0);
   lcd.print("Smart LED Clock     ");
   lcd.setCursor(0, 1);
-  lcd.print("Phase 5 - Final     ");
+  lcd.print("                    ");
   lcd.setCursor(0, 3);
   lcd.print(message);
   // Pad message line with spaces to clear any previous text
@@ -359,7 +379,7 @@ void displayStartupMessage(const char* message) {
 void showAnimationMessage() {
   lcd.clear();
   lcd.setCursor(0, 1);
-  lcd.print("  Animation horaire ");
+  lcd.print(" ANIMATION HORAIRE  ");
 }
 
 /**
@@ -372,6 +392,7 @@ void showAnimationMessage() {
 void wakeUpLCD() {
   lcd.backlight();
   lcdBacklightOn = true;
+  forceDisplay = true;
   lcd.clear();
 }
 

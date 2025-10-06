@@ -67,6 +67,8 @@ bool initRTC() {
  * @return true if connected successfully, false if connection failed
  */
 bool connectWiFi() {
+return true;
+
   Serial.print("Connecting to WiFi: ");
   Serial.println(ssid);
   
@@ -101,6 +103,8 @@ bool connectWiFi() {
  * @return true if sync successful, false if sync failed
  */
 bool syncTimeWithNTP() {
+return true;
+
   Serial.println("Synchronizing with NTP server...");
   
   timeClient.begin();

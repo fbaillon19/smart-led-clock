@@ -77,6 +77,12 @@ void displayHumidex(DateTime now);
 const char* getHumidexDescription(int humidex);
 
 /**
+ * @brief Display temperature value 
+ * @param temperature temperature to display
+ */
+void displayTempCelcius(float temperature);
+
+/**
  * Display startup message
  * @param message Message to display
  */
