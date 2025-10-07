@@ -114,7 +114,7 @@ bool syncTimeWithNTP();
  * Example: 2025/01/15 14:32:45
  * 
  * Uses sprintf for efficient formatting. Output is sent to Serial
- * without newline (use Serial.println() after if needed).
+ * without newline (use DEBUG_PRINTLN() after if needed).
  * 
  * @param dt DateTime object to print (from RTC or NTP)
  * 

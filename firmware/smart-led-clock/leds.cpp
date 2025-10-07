@@ -54,7 +54,7 @@ void initLEDs() {
   ledsMinuteSec.show();
   ledsAirQuality.show();
   
-  Serial.println("LED strips initialized");
+  DEBUG_PRINTLN("LED strips initialized");
 }
 
 /**
@@ -185,7 +185,7 @@ void updateAirQualityLEDs() {
  * Sets isAnimationActive flag to pause normal clock updates.
  */
 void startAnimation() {
-  Serial.println("Starting hourly animation");
+  DEBUG_PRINTLN("Starting hourly animation");
   
   if (lcdBacklightOn) {
     showAnimationMessage();
@@ -248,7 +248,7 @@ bool updateAnimation() {
  * Forces all LEDs to update by resetting tracking variables to invalid values.
  */
 void stopAnimation() {
-  Serial.println("Animation complete");
+  DEBUG_PRINTLN("Animation complete");
   isAnimationActive = false;
   ledsMinuteSec.clear();
   ledsMinuteSec.show();

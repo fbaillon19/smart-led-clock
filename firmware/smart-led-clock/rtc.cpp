@@ -34,26 +34,26 @@ NTPClient timeClient(udp, "pool.ntp.org", TIME_ZONE_OFFSET * 3600, 60000);
  * @return true if RTC initialized successfully, false otherwise
  */
 bool initRTC() {
-  Serial.println("Initializing DS3231 RTC...");
+  DEBUG_PRINTLN("Initializing DS3231 RTC...");
   
   // Initialize RTC
   if (!rtc.begin()) {
-    Serial.println("ERROR: DS3231 not found!");
+    DEBUG_PRINTLN("ERROR: DS3231 not found!");
     return false;
   }
   
-  Serial.println("DS3231 RTC initialized");
+  DEBUG_PRINTLN("DS3231 RTC initialized");
 
   // Check if RTC lost power
   if (rtc.lostPower()) {
-    Serial.println("WARNING: RTC lost power, will sync with NTP");
+    DEBUG_PRINTLN("WARNING: RTC lost power, will sync with NTP");
   }
 
   // Get and display current time
   DateTime now = rtc.now();
-  Serial.print("Current RTC time: ");
+  DEBUG_PRINT("Current RTC time: ");
   printDateTime(now);
-  Serial.println();
+  DEBUG_PRINTLN();
   
   return true;
 }
@@ -67,29 +67,28 @@ bool initRTC() {
  * @return true if connected successfully, false if connection failed
  */
 bool connectWiFi() {
-return true;
 
-  Serial.print("Connecting to WiFi: ");
-  Serial.println(ssid);
+  DEBUG_PRINT("Connecting to WiFi: ");
+  DEBUG_PRINTLN(ssid);
   
   int attempts = 0;
   WiFi.begin(ssid, pass);
   
   while (WiFi.status() != WL_CONNECTED && attempts < 20) {
     delay(500);
-    Serial.print(".");
+    DEBUG_PRINT(".");
     attempts++;
   }
-  Serial.println();
+  DEBUG_PRINTLN();
   
   if (WiFi.status() == WL_CONNECTED) {
     delay(1000);
-    Serial.print("Connected! IP: ");
-    Serial.println(WiFi.localIP());
+    DEBUG_PRINT("Connected! IP: ");
+    DEBUG_PRINTLN(WiFi.localIP());
     return true;
   }
   
-  Serial.println("WiFi connection failed");
+  DEBUG_PRINTLN("WiFi connection failed");
   return false;
 }
 
@@ -103,9 +102,8 @@ return true;
  * @return true if sync successful, false if sync failed
  */
 bool syncTimeWithNTP() {
-return true;
 
-  Serial.println("Synchronizing with NTP server...");
+  DEBUG_PRINTLN("Synchronizing with NTP server...");
   
   timeClient.begin();
   
@@ -120,15 +118,15 @@ return true;
     unsigned long epochTime = timeClient.getEpochTime();
     rtc.adjust(DateTime(epochTime));
     
-    Serial.print("Time synchronized: ");
+    DEBUG_PRINT("Time synchronized: ");
     DateTime now = rtc.now();
     printDateTime(now);
-    Serial.println();
+    DEBUG_PRINTLN();
     
     return true;
   }
   
-  Serial.println("NTP sync failed");
+  DEBUG_PRINTLN("NTP sync failed");
   return false;
 }
 
@@ -145,7 +143,7 @@ void printDateTime(DateTime dt) {
   sprintf(buffer, "%04d/%02d/%02d %02d:%02d:%02d", 
           dt.year(), dt.month(), dt.day(),
           dt.hour(), dt.minute(), dt.second());
-  Serial.print(buffer);
+  DEBUG_PRINT(buffer);
 }
 
 /**

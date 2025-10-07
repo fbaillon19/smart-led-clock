@@ -34,11 +34,11 @@ void initSensors() {
   // Initialize DHT22 sensors
   dhtIndoor.begin();
   dhtOutdoor.begin();
-  Serial.println("DHT22 sensors initialized");
+  DEBUG_PRINTLN("DHT22 sensors initialized");
   
   // Initialize air quality sensor
   pinMode(PIN_AIR_QUALITY_SENSOR, INPUT);
-  Serial.println("MQ135 air quality sensor initialized");
+  DEBUG_PRINTLN("MQ135 air quality sensor initialized");
 }
 
 /**
@@ -71,7 +71,7 @@ void updateSensorData() {
     indoorData.lastUpdate = millis();
   } else {
     indoorData.valid = false;
-    Serial.println("ERROR: Indoor sensor read failed");
+    DEBUG_PRINTLN("ERROR: Indoor sensor read failed");
   }
 
   // Read outdoor sensor
@@ -88,7 +88,7 @@ void updateSensorData() {
     outdoorData.lastUpdate = millis();
   } else {
     outdoorData.valid = false;
-    Serial.println("ERROR: Outdoor sensor read failed");
+    DEBUG_PRINTLN("ERROR: Outdoor sensor read failed");
   }
 }
 

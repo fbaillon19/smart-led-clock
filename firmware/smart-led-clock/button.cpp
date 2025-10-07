@@ -37,7 +37,7 @@ void initButton() {
   button.attachClick(buttonClick);
   button.attachLongPressStop(buttonLongPress);
   
-  Serial.println("Button initialized on pin " + String(PIN_BUTTON));
+  DEBUG_PRINTLN("Button initialized on pin " + String(PIN_BUTTON));
 }
 
 /**
@@ -61,14 +61,14 @@ void buttonClick() {
   // If LCD is off, just wake it up (no mode change)
   if (!lcdBacklightOn) {
     wakeUpLCD();
-    Serial.println("LCD backlight ON (wake up)");
+    DEBUG_PRINTLN("LCD backlight ON (wake up)");
     return;
   }
   
   // Cycle to next mode
   currentDisplayMode = (DisplayMode)((currentDisplayMode + 1) % MODE_COUNT);
-  Serial.print("Mode changed to: ");
-  Serial.println(currentDisplayMode);
+  DEBUG_PRINT("Mode changed to: ");
+  DEBUG_PRINTLN(currentDisplayMode);
   clearLCD();
 }
 
@@ -88,12 +88,12 @@ void buttonLongPress() {
   // Wake LCD if off
   if (!lcdBacklightOn) {
     wakeUpLCD();
-    Serial.println("LCD backlight ON (long press)");
+    DEBUG_PRINTLN("LCD backlight ON (long press)");
   }
   
   // Return to default mode
   currentDisplayMode = MODE_TEMP_HUMIDITY;
-  Serial.println("Returning to default mode");
+  DEBUG_PRINTLN("Returning to default mode");
   clearLCD();
 }
 

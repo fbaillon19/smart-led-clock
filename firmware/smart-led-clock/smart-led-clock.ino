@@ -42,6 +42,7 @@
 #include "display.h"
 #include "leds.h"
 #include "button.h"
+#include "strings.h"
 
 // ==========================================
 // GLOBAL VARIABLES (definitions)
@@ -74,89 +75,89 @@ unsigned long lastLCDActivity = 0;
 // SETUP
 // ==========================================
 void setup() {
-  Serial.begin(115200);
+  DEBUG_BEGIN(115200);
   delay(2000);
   
-  Serial.println("=== Smart LED Clock - Phase 5 (Refactored) ===");
-  Serial.println("Initializing...");
+  DEBUG_PRINTLN("=== Smart LED Clock - Phase 5 (Refactored) ===");
+  DEBUG_PRINTLN("Initializing...");
 
   // Initialize I2C
   Wire.begin();
   
   // Initialize LCD
   initDisplay();
-  displayStartupMessage("Initializing...");
+  displayStartupMessage(STR_PROJECT_NAME);
   delay(1000);
 
   // Initialize button
   initButton();
-  displayStartupMessage("Button Ready");
+  displayStartupMessage(STR_BUTTON_READY);
   delay(1000);
 
   // Initialize LED strips
   initLEDs();
-  displayStartupMessage("LEDs Ready");
+  displayStartupMessage(STR_LEDS_READY);
   delay(1000);
 
   // Initialize sensors
   initSensors();
-  displayStartupMessage("Sensors Ready");
+  displayStartupMessage(STR_SENSORS_READY);
   delay(1000);
 
   // Initialize DS3231 RTC
   if (!initRTC()) {
-    Serial.println("ERROR: RTC initialization failed!");
-    displayStartupMessage("DS3231 ERROR!");
+    DEBUG_PRINTLN("ERROR: RTC initialization failed!");
+    displayStartupMessage(STR_DS3231_ERROR);
     while(1) delay(1000);
   }
-  displayStartupMessage("DS3231 Ready");
+  displayStartupMessage(STR_DS3231_READY);
   delay(1000);
 
   // Connect to WiFi
-  displayStartupMessage("Connecting WiFi...");
+  displayStartupMessage(STR_CONNECTING_WIFI);
   if (connectWiFi()) {
     wifiConnected = true;
-    Serial.println("WiFi connected");
-    displayStartupMessage("WiFi Connected");
+    DEBUG_PRINTLN("WiFi connected");
+    displayStartupMessage(STR_WIFI_CONNECTED);
     delay(1000);
     
     // Synchronize time with NTP
-    displayStartupMessage("Syncing time...");
+    displayStartupMessage(STR_SYNCING_TIME);
     if (syncTimeWithNTP()) {
       lastNTPSyncSuccess = true;
       lastNTPSync = millis();
-      Serial.println("NTP sync successful");
-      displayStartupMessage("Time Synchronized");
+      DEBUG_PRINTLN("NTP sync successful");
+      displayStartupMessage(STR_TIME_SYNCED);
     } else {
-      Serial.println("NTP sync failed");
-      displayStartupMessage("Using RTC time");
+      DEBUG_PRINTLN("NTP sync failed");
+      displayStartupMessage(STR_USING_RTC_TIME);
     }
   } else {
-    Serial.println("WiFi failed");
-    displayStartupMessage("No WiFi - Using RTC");
+    DEBUG_PRINTLN("WiFi failed");
+    displayStartupMessage(STR_NO_WIFI);
   }
   delay(2000);
 
   // Display current time
   DateTime now = getCurrentTime();
-  Serial.print("Current time: ");
+  DEBUG_PRINT("Current time: ");
   printDateTime(now);
-  Serial.println();
+  DEBUG_PRINTLN();
 
   // Initial sensor reading
-  displayStartupMessage("Reading sensors...");
+  displayStartupMessage(STR_READING_SENSORS);
   updateSensorData();
   updateAirQuality();
   delay(2000);
 
-  displayStartupMessage("System Ready!");
+  displayStartupMessage(STR_SYSTEM_READY);
   delay(2000);
   
   clearLCD();
   lastLCDActivity = millis();
 
-  Serial.println("System ready!");
-  Serial.println();
+  DEBUG_PRINTLN("System ready!");
+  DEBUG_PRINTLN();
 }
 
 // ==========================================
@@ -186,7 +187,7 @@ void loop() {
     // Daily NTP sync
     if (wifiConnected && now.hour() == NTP_SYNC_HOUR && 
         now.minute() == NTP_SYNC_MINUTE && now.second() == 0) {
-      Serial.println("Daily NTP sync triggered");
+      DEBUG_PRINTLN("Daily NTP sync triggered");
       if (syncTimeWithNTP()) {
         lastNTPSync = millis();
         lastNTPSyncSuccess = true;
@@ -195,18 +196,18 @@ void loop() {
 
     // Debug output every 10 seconds
     if (now.second() % 10 == 0) {
-      Serial.print("Time: ");
+      DEBUG_PRINT("Time: ");
       printDateTime(now);
-      Serial.print(" | Mode: ");
-      Serial.print(currentDisplayMode);
-      Serial.print(" | LCD: ");
-      Serial.print(lcdBacklightOn ? "ON" : "OFF");
-      Serial.print(" | Indoor: ");
-      Serial.print(indoorData.temperature, 1);
-      Serial.print("°C | Outdoor: ");
-      Serial.print(outdoorData.temperature, 1);
-      Serial.print("°C | AQI: ");
-      Serial.println(airQuality.estimatedAQI);
+      DEBUG_PRINT(" | Mode: ");
+      DEBUG_PRINT(currentDisplayMode);
+      DEBUG_PRINT(" | LCD: ");
+      DEBUG_PRINT(lcdBacklightOn ? "ON" : "OFF");
+      DEBUG_PRINT(" | Indoor: ");
+      DEBUG_PRINT(indoorData.temperature, 1);
+      DEBUG_PRINT("°C | Outdoor: ");
+      DEBUG_PRINT(outdoorData.temperature, 1);
+      DEBUG_PRINT("°C | AQI: ");
+      DEBUG_PRINTLN(airQuality.estimatedAQI);
     }
   }
 

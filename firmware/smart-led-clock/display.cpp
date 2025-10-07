@@ -48,7 +48,7 @@ void initDisplay() {
   lcd.createChar(0, degreeSymbol);
   lcd.clear();
   
-  Serial.println("LCD initialized");
+  DEBUG_PRINTLN("LCD initialized");
 }
 
 /**
@@ -115,10 +115,8 @@ void displayTempHumidity(DateTime now) {
   }
   
   // Line 0: Date + Day (only update if changed)
-  const char* days[] = {"DIM", "LUN", "MAR", "MER", "JEU", "VEN", "SAM"};
-  const char* months[] = {"JANV", "FEV", "MARS", "AVR", "MAI", "JUIN", "JUIL", "AOUT", "SEPT", "OCT", "NOV", "DEC"};
   char dateBuffer[21];
-  sprintf(dateBuffer, "  %s %02d %s %04d", days[now.dayOfTheWeek()], now.day(), months[now.month()], now.year());
+  sprintf(dateBuffer, "  %s %02d %s %04d", getDayName(now.dayOfTheWeek()), now.day(), getMonthName(now.month()), now.year());
   if (strlen(dateBuffer) < 20) strcat(dateBuffer, " ");
   if (strcmp(dateBuffer, lastDateBuffer) != 0) {
     lcd.setCursor(0, 0);
@@ -281,7 +279,7 @@ void displayHumidex(DateTime now) {
     lcd.setCursor(0, 2);              // LCD line 3
     // Only update description if humidex changed significantly (±2)
     if (outdoorData.valid) {
-      lcd.print(getHumidexDescription(outdoorData.humidex));
+      lcd.print(getHumidexString(outdoorData.humidex));
       lastHumidex = outdoorData.humidex;
     } else if (!outdoorData.valid) {
       lcd.print("                    ");
@@ -294,28 +292,6 @@ void displayHumidex(DateTime now) {
   forceDisplay = true;
 }
 
-/**
- * @brief Get humidex comfort description
- * 
- * Converts humidex value to French comfort description.
- * 
- * Scale (Canadian standard):
- * - < 20: No discomfort
- * - 20-29: Little discomfort
- * - 30-39: Some discomfort
- * - 40-44: Great discomfort, avoid exertion
- * - ≥ 45: Dangerous, heat stroke risk
- * 
- * @param humidex Humidex value (unitless index)
- * @return Pointer to description string (French)
- */
-const char* getHumidexDescription(int humidex) {
-  if (humidex < 20) return "  PAS D'INCONFORT   ";
-  if (humidex < 30) return "  PEU D'INCONFORT   ";
-  if (humidex < 40) return " INCONFORT CERTAIN  ";
-  if (humidex < 45) return " EVITER LES EFFORTS ";
-  return "DANGER COUP CHALEUR ";
-}
 
 /**
  * @brief Display temperature value
@@ -358,9 +334,9 @@ void displayTempCelcius(float temperature) {
 void displayStartupMessage(const char* message) {
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("Smart LED Clock     ");
+  lcd.print(STR_PROJECT_NAME);
   lcd.setCursor(0, 1);
-  lcd.print("                    ");
+  lcd.print(STR_VERSION);
   lcd.setCursor(0, 3);
   lcd.print(message);
   // Pad message line with spaces to clear any previous text
@@ -424,6 +400,6 @@ void manageLCDBacklight() {
   if (lcdBacklightOn && (millis() - lastLCDActivity > LCD_BACKLIGHT_TIMEOUT)) {
     lcd.noBacklight();
     lcdBacklightOn = false;
-    Serial.println("LCD backlight OFF");
+    DEBUG_PRINTLN("LCD backlight OFF");
   }
 }

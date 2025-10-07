@@ -30,6 +30,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <RTClib.h>
 #include "config.h"
+#include "strings.h"
 
 // ==========================================
 // LCD OBJECT
@@ -68,13 +69,6 @@ void displayFeelsLike(DateTime now);
  * @param now Current DateTime
  */
 void displayHumidex(DateTime now);
-
-/**
- * Get humidex description text
- * @param humidex Humidex value
- * @return Description string
- */
-const char* getHumidexDescription(int humidex);
 
 /**
  * @brief Display temperature value 
