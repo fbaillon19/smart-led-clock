@@ -37,12 +37,13 @@
 
 // Include all module headers
 #include "config.h"
-#include "rtc.h"
-#include "sensors.h"
-#include "display.h"
-#include "leds.h"
-#include "button.h"
 #include "strings.h"
+#include "leds.h"
+#include "sensors.h"
+#include "button.h"
+#include "rtc.h"
+#include "display.h"
+#include "webserver.h"
 
 // ==========================================
 // GLOBAL VARIABLES (definitions)
@@ -132,6 +133,11 @@ void setup() {
       DEBUG_PRINTLN("NTP sync failed");
       displayStartupMessage(STR_USING_RTC_TIME);
     }
+
+    // Initialiser le serveur web
+    displayStartupMessage(STR_INITIALIZING);
+    initWebServer();
+    delay(1000);
   } else {
     DEBUG_PRINTLN("WiFi failed");
     displayStartupMessage(STR_NO_WIFI);
@@ -168,6 +174,11 @@ void loop() {
 
   // Process button input
   updateButton();
+
+  // Gérer les requêtes web
+  if (wifiConnected) {
+    handleWebServer();
+  }
 
   // Manage LCD backlight timeout
   manageLCDBacklight();
