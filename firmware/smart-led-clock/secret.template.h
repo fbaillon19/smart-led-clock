@@ -3,10 +3,15 @@
  * @brief WiFi credentials template
  * 
  * INSTRUCTIONS:
- * 1. Copy this file and rename it to "secrets.h"
- * 2. Replace "YourSSID" with your WiFi network name
- * 3. Replace "YourPassword" with your WiFi password
- * 4. DO NOT commit secrets.h to version control (it's in .gitignore)
+ * 1. Copy this file to "secrets.h"
+ * 2. Create a "secrets.cpp" with this content:
+ * 
+ *    #include "secrets.h"
+ *    const char* ssid = "YourSSID";
+ *    const char* pass = "YourPassword";
+ * 
+ * 3. Replace YourSSID and YourPassword with your actual credentials
+ * 4. DO NOT commit secrets.h or secrets.cpp to version control
  * 
  * @author F. Baillon
  * @version 1.0.0
@@ -18,8 +23,7 @@
 #define SECRETS_H
 
 // WiFi network credentials
-// Replace with your actual WiFi SSID and password
-const char* ssid = "YourSSID";
-const char* pass = "YourPassword";
+extern const char* ssid;
+extern const char* pass;
 
 #endif // SECRETS_H

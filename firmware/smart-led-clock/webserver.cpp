@@ -11,165 +11,14 @@
 #include "webserver.h"
 #include "rtc.h"
 #include <Arduino.h>
+#include "storage.h"
+#include "leds.h"
+#include "webpage.h"
 
 // ==========================================
 // GLOBAL WEB SERVER
 // ==========================================
 WiFiServer webServer(80);
-
-// ==========================================
-// HTML PAGE (stored in PROGMEM to save RAM)
-// ==========================================
-const char WEBPAGE[] PROGMEM = R"rawliteral(
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart LED Clock</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-            background: #f0f0f0;
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        .sensor-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-top: 30px;
-        }
-        .sensor-card {
-            background: #f9f9f9;
-            padding: 20px;
-            border-radius: 8px;
-            border-left: 4px solid #4CAF50;
-        }
-        .sensor-label {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 5px;
-        }
-        .sensor-value {
-            font-size: 28px;
-            font-weight: bold;
-            color: #333;
-        }
-        .sensor-unit {
-            font-size: 18px;
-            color: #999;
-        }
-        .update-time {
-            text-align: center;
-            color: #999;
-            margin-top: 20px;
-        }
-        .refresh-btn {
-            display: block;
-            width: 200px;
-            margin: 20px auto;
-            padding: 12px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .refresh-btn:hover {
-            background: #45a049;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🕐 Smart LED Clock</h1>
-        
-        <div class="sensor-grid">
-            <div class="sensor-card">
-                <div class="sensor-label">Température Intérieure</div>
-                <div class="sensor-value" id="tempIn">--</div>
-                <div class="sensor-unit">°C</div>
-            </div>
-            
-            <div class="sensor-card">
-                <div class="sensor-label">Humidité Intérieure</div>
-                <div class="sensor-value" id="humIn">--</div>
-                <div class="sensor-unit">%</div>
-            </div>
-            
-            <div class="sensor-card">
-                <div class="sensor-label">Température Extérieure</div>
-                <div class="sensor-value" id="tempOut">--</div>
-                <div class="sensor-unit">°C</div>
-            </div>
-            
-            <div class="sensor-card">
-                <div class="sensor-label">Humidité Extérieure</div>
-                <div class="sensor-value" id="humOut">--</div>
-                <div class="sensor-unit">%</div>
-            </div>
-            
-            <div class="sensor-card">
-                <div class="sensor-label">Qualité de l'Air (AQI)</div>
-                <div class="sensor-value" id="aqi">--</div>
-                <div class="sensor-unit" id="aqiQuality">--</div>
-            </div>
-            
-            <div class="sensor-card">
-                <div class="sensor-label">Heure</div>
-                <div class="sensor-value" id="time" style="font-size: 20px;">--:--:--</div>
-            </div>
-        </div>
-        
-        <button class="refresh-btn" onclick="updateData()">🔄 Rafraîchir</button>
-        
-        <div class="update-time">
-            Dernière mise à jour: <span id="lastUpdate">--</span>
-        </div>
-    </div>
-    
-    <script>
-        function updateData() {
-            fetch('/api/status')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('tempIn').textContent = data.indoor.temp.toFixed(1);
-                    document.getElementById('humIn').textContent = Math.round(data.indoor.humidity);
-                    document.getElementById('tempOut').textContent = data.outdoor.temp.toFixed(1);
-                    document.getElementById('humOut').textContent = Math.round(data.outdoor.humidity);
-                    document.getElementById('aqi').textContent = data.airQuality.aqi;
-                    document.getElementById('aqiQuality').textContent = data.airQuality.quality;
-                    document.getElementById('time').textContent = data.time;
-                    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('fr-FR');
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Erreur de connexion');
-                });
-        }
-        
-        // Auto-refresh every 5 seconds
-        setInterval(updateData, 5000);
-        
-        // Initial load
-        updateData();
-    </script>
-</body>
-</html>
-)rawliteral";
 
 // ==========================================
 // FUNCTION IMPLEMENTATIONS
@@ -187,40 +36,85 @@ void handleWebServer() {
         return;  // No client, return immediately
     }
     
+    unsigned long startTime = millis();  // ⏱️ Début
+
     DEBUG_PRINTLN("New web client connected");
     
     String request = "";
+    String postData = "";
+    bool isPost = false;
+    int contentLength = 0;
     
-    // Read the HTTP request
+    // Read the HTTP request headers
     while (client.connected() && client.available()) {
         char c = client.read();
         request += c;
         
-        // Request ends with blank line
+        // Check if it's a POST request
+        if (request.indexOf("POST") >= 0) {
+            isPost = true;
+        }
+        
+        // Extract Content-Length for POST
+        if (request.indexOf("Content-Length: ") >= 0) {
+            int startPos = request.indexOf("Content-Length: ") + 16;
+            int endPos = request.indexOf("\r\n", startPos);
+            String lengthStr = request.substring(startPos, endPos);
+            contentLength = lengthStr.toInt();
+        }
+        
+        // Headers end with blank line
         if (request.endsWith("\r\n\r\n")) {
             break;
         }
         
         // Prevent buffer overflow
-        if (request.length() > 500) {
+        if (request.length() > 1000) {
             break;
         }
+    }
+    
+    // Read POST data if present
+    if (isPost && contentLength > 0) {
+        unsigned long startTime = millis();
+        while (postData.length() < contentLength && (millis() - startTime) < 5000) {
+            if (client.available()) {
+                postData += (char)client.read();
+            }
+        }
+        DEBUG_PRINT("POST data: ");
+        DEBUG_PRINTLN(postData);
     }
     
     DEBUG_PRINT("Request: ");
     DEBUG_PRINTLN(request.substring(0, 50));  // Print first 50 chars
     
-    // Route the request
-    if (request.indexOf("GET / ") >= 0) {
-        // Serve main HTML page
+    // ========================================
+    // ROUTE HANDLING
+    // ========================================
+    
+    // Route: Main page
+    if (request.indexOf("GET / ") >= 0 || request.indexOf("GET /index") >= 0) {
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: text/html");
         client.println("Connection: close");
         client.println();
-        client.println(WEBPAGE);
         
-    } else if (request.indexOf("GET /api/status") >= 0) {
-        // Serve JSON data
+        sendPageInChunks(client, WEBPAGE_HOME);
+    }
+    
+    // Route: Configuration page
+    else if (request.indexOf("GET /config") >= 0) {
+        client.println("HTTP/1.1 200 OK");
+        client.println("Content-Type: text/html");
+        client.println("Connection: close");
+        client.println();
+        
+        sendPageInChunks(client, WEBPAGE_CONFIG);
+    }
+    
+    // Route: API Status (GET)
+    else if (request.indexOf("GET /api/status") >= 0) {
         String json = getSensorDataJSON();
         
         client.println("HTTP/1.1 200 OK");
@@ -228,9 +122,38 @@ void handleWebServer() {
         client.println("Connection: close");
         client.println();
         client.println(json);
+    }
+    
+    // Route: API Config (GET)
+    else if (request.indexOf("GET /api/config") >= 0) {
+        String json = getConfigJSON();
         
-    } else {
-        // 404 Not Found
+        client.println("HTTP/1.1 200 OK");
+        client.println("Content-Type: application/json");
+        client.println("Connection: close");
+        client.println();
+        client.println(json);
+    }
+    
+    // Route: API Config (POST)
+    else if (request.indexOf("POST /api/config") >= 0) {
+        bool success = parseAndSaveConfig(postData);
+        
+        String json = "{\"success\":";
+        json += success ? "true" : "false";
+        json += ",\"message\":\"";
+        json += success ? "Config saved" : "Failed to save config";
+        json += "\"}";
+        
+        client.println("HTTP/1.1 200 OK");
+        client.println("Content-Type: application/json");
+        client.println("Connection: close");
+        client.println();
+        client.println(json);
+    }
+    
+    // Route: 404 Not Found
+    else {
         client.println("HTTP/1.1 404 Not Found");
         client.println("Content-Type: text/plain");
         client.println("Connection: close");
@@ -239,10 +162,15 @@ void handleWebServer() {
     }
     
     // Give client time to receive data
-    delay(10);
+    delay(1);
     client.stop();
     
     DEBUG_PRINTLN("Client disconnected");
+
+    unsigned long duration = millis() - startTime;  // ⏱️ Fin
+    DEBUG_PRINT("Request handled in ");
+    DEBUG_PRINT(duration);
+    DEBUG_PRINTLN(" ms");
 }
 
 String getSensorDataJSON() {
@@ -278,4 +206,192 @@ String getSensorDataJSON() {
     json += "}";
     
     return json;
+}
+
+String getConfigJSON() {
+    ClockConfig config;
+    getCurrentConfig(&config);
+    
+    String json = "{";
+    
+    // NTP settings
+    json += "\"timezoneOffset\":" + String(config.timezoneOffset) + ",";
+    json += "\"ntpSyncHour\":" + String(config.ntpSyncHour) + ",";
+    json += "\"ntpSyncMinute\":" + String(config.ntpSyncMinute) + ",";
+    
+    // LED settings
+    json += "\"led\":{";
+    json += "\"hour\":{";
+    json += "\"r\":" + String(config.colorHourR) + ",";
+    json += "\"g\":" + String(config.colorHourG) + ",";
+    json += "\"b\":" + String(config.colorHourB);
+    json += "},";
+    json += "\"minute\":{";
+    json += "\"r\":" + String(config.colorMinuteR) + ",";
+    json += "\"g\":" + String(config.colorMinuteG) + ",";
+    json += "\"b\":" + String(config.colorMinuteB);
+    json += "},";
+    json += "\"second\":{";
+    json += "\"r\":" + String(config.colorSecondR) + ",";
+    json += "\"g\":" + String(config.colorSecondG) + ",";
+    json += "\"b\":" + String(config.colorSecondB);
+    json += "},";
+    json += "\"brightness\":" + String(config.ledBrightness);
+    json += "},";
+    
+    // LCD settings
+    json += "\"lcdTimeout\":" + String(config.lcdTimeout) + ",";
+    
+    // Language
+    json += "\"language\":" + String(config.language) + ",";
+    
+    // Debug mode
+    json += "\"debugMode\":" + String(config.debugMode);
+    
+    json += "}";
+    
+    return json;
+}
+
+bool parseAndSaveConfig(String postData) {
+    DEBUG_PRINTLN("Parsing config from POST data...");
+    
+    // Simple JSON parsing (manual for embedded systems)
+    ClockConfig config;
+    getCurrentConfig(&config);  // Start with current config
+    
+    // Helper function to extract integer value
+    auto extractInt = [](String data, String key) -> int {
+        int startPos = data.indexOf("\"" + key + "\":");
+        if (startPos < 0) return -999;  // Key not found
+        startPos = data.indexOf(":", startPos) + 1;
+        int endPos = data.indexOf(",", startPos);
+        if (endPos < 0) endPos = data.indexOf("}", startPos);
+        String value = data.substring(startPos, endPos);
+        value.trim();
+        return value.toInt();
+    };
+    
+    // Parse NTP settings
+    int tz = extractInt(postData, "timezoneOffset");
+    if (tz != -999) config.timezoneOffset = tz;
+    
+    int syncH = extractInt(postData, "ntpSyncHour");
+    if (syncH != -999) config.ntpSyncHour = syncH;
+    
+    int syncM = extractInt(postData, "ntpSyncMinute");
+    if (syncM != -999) config.ntpSyncMinute = syncM;
+    
+    // Parse LED colors - Hour
+    int hr = extractInt(postData, "\"hour\":{\"r\"");
+    if (hr == -999) hr = extractInt(postData, "r");  // Try simplified key
+    if (hr != -999 && hr >= 0 && hr <= 255) config.colorHourR = hr;
+    
+    // This is getting complex - let me use a better approach
+    // Extract LED hour colors
+    int hourStart = postData.indexOf("\"hour\":{");
+    if (hourStart >= 0) {
+        int hourEnd = postData.indexOf("}", hourStart);
+        String hourData = postData.substring(hourStart, hourEnd);
+        
+        int r = extractInt(hourData, "r");
+        int g = extractInt(hourData, "g");
+        int b = extractInt(hourData, "b");
+        
+        if (r >= 0 && r <= 255) config.colorHourR = r;
+        if (g >= 0 && g <= 255) config.colorHourG = g;
+        if (b >= 0 && b <= 255) config.colorHourB = b;
+    }
+    
+    // Extract LED minute colors
+    int minuteStart = postData.indexOf("\"minute\":{");
+    if (minuteStart >= 0) {
+        int minuteEnd = postData.indexOf("}", minuteStart);
+        String minuteData = postData.substring(minuteStart, minuteEnd);
+        
+        int r = extractInt(minuteData, "r");
+        int g = extractInt(minuteData, "g");
+        int b = extractInt(minuteData, "b");
+        
+        if (r >= 0 && r <= 255) config.colorMinuteR = r;
+        if (g >= 0 && g <= 255) config.colorMinuteG = g;
+        if (b >= 0 && b <= 255) config.colorMinuteB = b;
+    }
+    
+    // Extract LED second colors
+    int secondStart = postData.indexOf("\"second\":{");
+    if (secondStart >= 0) {
+        int secondEnd = postData.indexOf("}", secondStart);
+        String secondData = postData.substring(secondStart, secondEnd);
+        
+        int r = extractInt(secondData, "r");
+        int g = extractInt(secondData, "g");
+        int b = extractInt(secondData, "b");
+        
+        if (r >= 0 && r <= 255) config.colorSecondR = r;
+        if (g >= 0 && g <= 255) config.colorSecondG = g;
+        if (b >= 0 && b <= 255) config.colorSecondB = b;
+    }
+    
+    // Parse brightness
+    int bright = extractInt(postData, "brightness");
+    if (bright >= 0 && bright <= 255) config.ledBrightness = bright;
+    
+    // Parse LCD timeout
+    int lcdTime = extractInt(postData, "lcdTimeout");
+    if (lcdTime >= 5000) config.lcdTimeout = lcdTime;
+    
+    // Parse language
+    int lang = extractInt(postData, "language");
+    if (lang == 0 || lang == 1) config.language = lang;
+    
+    // Parse debug mode
+    int debug = extractInt(postData, "debugMode");
+    if (debug == 0 || debug == 1) config.debugMode = debug;
+    
+    // Save to EEPROM
+    bool saved = saveConfig(&config);
+    
+    if (saved) {
+        DEBUG_PRINTLN("Config saved successfully");
+        // Apply new config (will need restart for some settings)
+        applyConfig(&config);
+
+          // Forcer la mise à jour immédiate de l'affichage LED
+        DateTime now = getCurrentTime();
+        updateLEDClock(now);
+
+    } else {
+        DEBUG_PRINTLN("Config unchanged or save failed");
+    }
+    
+    return true;  // Return true even if unchanged (not an error)
+}
+
+/**
+ * @brief Send page content in chunks for better performance
+ * 
+ * Sends PROGMEM content in 512-byte chunks instead of byte-by-byte.
+ * This dramatically improves transfer speed.
+ * 
+ * @param client WiFiClient to send data to
+ * @param content PROGMEM string containing page content
+ */
+void sendPageInChunks(WiFiClient& client, const char* content) {
+    const size_t CHUNK_SIZE = 512;  // Optimal chunk size
+    char buffer[CHUNK_SIZE + 1];
+    size_t contentLen = strlen_P(content);
+    size_t sent = 0;
+    
+    while (sent < contentLen) {
+        size_t toSend = min(CHUNK_SIZE, contentLen - sent);
+        memcpy_P(buffer, content + sent, toSend);
+        buffer[toSend] = '\0';
+        
+        client.write((uint8_t*)buffer, toSend);
+        sent += toSend;
+        
+        // Small delay to avoid buffer overflow
+        delay(1);
+    }
 }

@@ -87,7 +87,8 @@ void updateLEDClock(DateTime now) {
     ledsHour.setPixelColor(lastHour, 0, 0, 0);
     lastHour = hour;
   }
-  ledsHour.setPixelColor(hour, COLOR_HOUR_R, COLOR_HOUR_G, COLOR_HOUR_B);
+  // Utiliser les variables runtime au lieu des constantes
+  ledsHour.setPixelColor(hour, runtimeColorHourR, runtimeColorHourG, runtimeColorHourB);
   ledsHour.show();
 
   // Update minute LED
@@ -103,11 +104,12 @@ void updateLEDClock(DateTime now) {
 
   // Set minute and second LEDs (handle overlap)
   if (minute == second) {
-    // Overlap: show combined color
+    // Overlap: show combined color (garder COLOR_OVERLAP pour l'instant)
     ledsMinuteSec.setPixelColor(minute, COLOR_OVERLAP_R, COLOR_OVERLAP_G, COLOR_OVERLAP_B);
   } else {
-    ledsMinuteSec.setPixelColor(minute, COLOR_MINUTE_R, COLOR_MINUTE_G, COLOR_MINUTE_B);
-    ledsMinuteSec.setPixelColor(second, COLOR_SECOND_R, COLOR_SECOND_G, COLOR_SECOND_B);
+    // Utiliser les variables runtime
+    ledsMinuteSec.setPixelColor(minute, runtimeColorMinuteR, runtimeColorMinuteG, runtimeColorMinuteB);
+    ledsMinuteSec.setPixelColor(second, runtimeColorSecondR, runtimeColorSecondG, runtimeColorSecondB);
   }
 
   ledsMinuteSec.show();

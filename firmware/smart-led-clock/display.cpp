@@ -397,7 +397,8 @@ void clearLCD() {
  * When backlight turns off, a message is printed to Serial.
  */
 void manageLCDBacklight() {
-  if (lcdBacklightOn && (millis() - lastLCDActivity > LCD_BACKLIGHT_TIMEOUT)) {
+  // Utiliser la variable runtime au lieu de la constante
+  if (lcdBacklightOn && (millis() - lastLCDActivity > runtimeLcdTimeout)) {
     lcd.noBacklight();
     lcdBacklightOn = false;
     DEBUG_PRINTLN("LCD backlight OFF");

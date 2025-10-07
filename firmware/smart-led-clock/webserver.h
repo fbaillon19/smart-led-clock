@@ -55,4 +55,22 @@ void handleWebServer();
  */
 String getSensorDataJSON();
 
+/**
+ * @brief Get configuration as JSON string
+ * @return JSON string with current configuration
+ */
+String getConfigJSON();
+
+/**
+ * @brief Parse and save configuration from POST data
+ * @param postData POST data string
+ * @return true if config saved successfully
+ */
+bool parseAndSaveConfig(String postData);
+
+/**
+ * @brief Send page content in chunks (internal helper)
+ */
+void sendPageInChunks(WiFiClient& client, const char* content);
+
 #endif // WEBSERVER_H

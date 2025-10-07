@@ -5,6 +5,7 @@
 # ==========================================
 # IMPORTANT: Never commit WiFi credentials
 firmware/smart-led-clock/secrets.h
+firmware/smart-led-clock/secrets.cpp
 
 # ==========================================
 # Arduino IDE files

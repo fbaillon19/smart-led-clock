@@ -44,6 +44,7 @@
 #include "rtc.h"
 #include "display.h"
 #include "webserver.h"
+#include "storage.h"
 
 // ==========================================
 // GLOBAL VARIABLES (definitions)
@@ -71,6 +72,19 @@ unsigned long lastNTPSync = 0;
 DisplayMode currentDisplayMode = MODE_TEMP_HUMIDITY;
 bool lcdBacklightOn = true;
 unsigned long lastLCDActivity = 0;
+
+// Runtime configuration variables (can be changed via web)
+uint8_t runtimeLedBrightness = 100;
+uint32_t runtimeLcdTimeout = LCD_BACKLIGHT_TIMEOUT;
+uint8_t runtimeColorHourR = COLOR_HOUR_R;
+uint8_t runtimeColorHourG = COLOR_HOUR_G;
+uint8_t runtimeColorHourB = COLOR_HOUR_B;
+uint8_t runtimeColorMinuteR = COLOR_MINUTE_R;
+uint8_t runtimeColorMinuteG = COLOR_MINUTE_G;
+uint8_t runtimeColorMinuteB = COLOR_MINUTE_B;
+uint8_t runtimeColorSecondR = COLOR_SECOND_R;
+uint8_t runtimeColorSecondG = COLOR_SECOND_G;
+uint8_t runtimeColorSecondB = COLOR_SECOND_B;
 
 // ==========================================
 // SETUP
@@ -137,6 +151,11 @@ void setup() {
     // Initialiser le serveur web
     displayStartupMessage(STR_INITIALIZING);
     initWebServer();
+    delay(1000);
+
+    // Initialiser le stockage EEPROM
+    displayStartupMessage(STR_LOAD_CONFIG);
+    initStorage();
     delay(1000);
   } else {
     DEBUG_PRINTLN("WiFi failed");

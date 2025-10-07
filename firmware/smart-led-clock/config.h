@@ -204,4 +204,20 @@ extern DisplayMode currentDisplayMode;
 extern bool lcdBacklightOn;
 extern unsigned long lastLCDActivity;
 
+// ==========================================
+// RUNTIME CONFIGURATION VARIABLES
+// ==========================================
+// These can be modified at runtime via web interface
+extern uint8_t runtimeLedBrightness;
+extern uint32_t runtimeLcdTimeout;
+extern uint8_t runtimeColorHourR;
+extern uint8_t runtimeColorHourG;
+extern uint8_t runtimeColorHourB;
+extern uint8_t runtimeColorMinuteR;
+extern uint8_t runtimeColorMinuteG;
+extern uint8_t runtimeColorMinuteB;
+extern uint8_t runtimeColorSecondR;
+extern uint8_t runtimeColorSecondG;
+extern uint8_t runtimeColorSecondB;
+
 #endif // CONFIG_H
