@@ -5,6 +5,71 @@ All notable changes to the Smart LED Clock project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-01-XX
+
+### Added - Web Interface 🌐
+- **Complete web interface** accessible via browser at `http://arduino-ip`
+- **Dashboard page** with real-time sensor data (temperature, humidity, AQI)
+  - Auto-refresh every 5 seconds
+  - Mobile-friendly responsive design
+  - Visual sensor cards with color-coded information
+- **Configuration page** for system parameters
+  - LED brightness adjustment (0-255)
+  - LED color customization (hour/minute/second RGB values)
+  - LCD backlight timeout setting (5-300 seconds)
+  - NTP timezone configuration
+  - Language selection (FR/EN)
+  - Debug mode toggle
+- **API REST endpoints** (JSON format)
+  - `GET /api/status` - Real-time sensor readings
+  - `GET /api/config` - Current configuration
+  - `POST /api/config` - Update configuration
+
+### Added - Configuration Storage 💾
+- **EEPROM storage system** for persistent configuration
+  - 8 KB capacity (using ~200 bytes)
+  - Wear-leveling: only writes on actual changes
+  - Expected lifetime: 274+ years at 1 write/day
+  - Checksum validation for data integrity
+- **Runtime configuration variables** for immediate updates
+  - No reboot required for most settings
+  - Changes visible instantly on LED display
+  - Settings persist across power cycles
+
+### Added - Code Organization 🏗️
+- **webpage.h** - HTML pages separated from server logic
+  - All pages stored in PROGMEM to save RAM
+  - Easy to add/modify web pages
+- **storage.h/cpp** - EEPROM management module
+- **Runtime variables** in config.h for dynamic parameters
+
+### Changed - Performance ⚡
+- **Optimized HTTP server** with chunk-based page delivery
+  - Response time: < 1 second (was 20-30 seconds)
+  - Uses 512-byte chunks instead of byte-by-byte
+  - Function `sendPageInChunks()` for efficient transfers
+- **Reduced connection delays** (10ms → 1ms)
+
+### Fixed 🐛
+- Fixed multiple definition error for WiFi credentials
+  - Proper use of `extern` in secrets.h
+  - Definitions moved to secrets.cpp
+
+### Technical Details 🔧
+- Web server runs on port 80 (HTTP)
+- Non-blocking request handling
+- JSON parsing for POST requests
+- Mobile-responsive CSS grid layout
+- ~15 KB HTML pages efficiently delivered
+
+### Notes 📝
+- Some settings require reboot: NTP sync time, language, debug mode
+- Most settings apply immediately: LED colors, brightness, LCD timeout
+- EEPROM writes only occur when configuration actually changes
+- Web interface accessible only on local network (security by design)
+
+---
+
 ## [1.0.0] - 2025-01-XX
 
 ### Added

@@ -1,6 +1,6 @@
 # Smart LED Clock
 
-[🇫🇷 Français](./docs/README_FR.md) | [🇬🇧 English](./docs/README_EN.md)
+[🇫🇷 Français](./README_FR.md) | [🇬🇧 English](./README_EN.md)
 
 ---
 
@@ -8,7 +8,7 @@
 
 Une horloge intelligente à LED avec affichage analogique sur anneaux LED et affichage numérique sur écran LCD. Le projet comprend des capteurs de température/humidité intérieur/extérieur, un capteur de qualité de l'air, une synchronisation NTP via WiFi, et un contrôle par bouton.
 
-**[Lire la documentation complète en français →](./docs/README_FR.md)**
+**[Lire la documentation complète en français →](./README_FR.md)**
 
 ### Caractéristiques principales
 - 🕐 Affichage analogique sur anneaux LED (12h + 60min/sec)
@@ -25,7 +25,7 @@ Une horloge intelligente à LED avec affichage analogique sur anneaux LED et aff
 
 An intelligent LED clock with analog display on LED rings and digital display on LCD screen. The project includes indoor/outdoor temperature/humidity sensors, air quality sensor, NTP synchronization via WiFi, and button control.
 
-**[Read full documentation in English →](./docs/README_EN.md)**
+**[Read full documentation in English →](./README_EN.md)**
 
 ### Main Features
 - 🕐 Analog display on LED rings (12h + 60min/sec)

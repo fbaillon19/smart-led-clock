@@ -1,526 +1,1137 @@
-# Troubleshooting Guide
+# Troubleshooting Guide - Smart LED Clock 🔧
 
-This guide covers common issues encountered during Smart LED Clock assembly and operation, along with step-by-step solutions.
+> Common issues, solutions, and debugging techniques
 
-## 🔧 General Troubleshooting Process
-
-1. **Identify the Problem**: What exactly isn't working?
-2. **Check Power**: Ensure stable 5V supply with adequate current
-3. **Verify Connections**: Look for loose wires, cold solder joints
-4. **Test Components**: Use individual test codes to isolate issues
-5. **Check Software**: Verify correct libraries and configuration
-6. **Monitor Serial**: Enable debug mode for detailed information
+This guide helps you diagnose and fix common problems with the Smart LED Clock project.
 
 ---
 
-## ⚡ Power Supply Issues
+## 📋 Table of Contents
 
-### Symptom: Arduino won't boot or resets randomly
-**Common Causes:**
-- Insufficient power supply capacity
-- Voltage drop under load
-- Poor quality power supply
-
-**Solutions:**
-1. **Check power supply specifications**
-   ```
-   Required: 5V, minimum 3A (5A recommended)
-   Measure actual voltage: should be 4.8-5.2V
-   ```
-
-2. **Test with LED strips disconnected**
-   - If Arduino works without LEDs, power supply is insufficient
-   - LED strips can draw up to 3A at full brightness
-
-3. **Add capacitors** (advanced)
-   - 1000µF electrolytic capacitor near power input
-   - 100µF capacitor near Arduino power pins
-
-### Symptom: LEDs dim or flicker
-**Causes:** Voltage drop, insufficient current capacity
-
-**Solutions:**
-- Use thicker wires for power distribution (16-18 AWG)
-- Add power injection points for long LED strips
-- Reduce LED brightness in software as temporary fix
+- [Quick Diagnosis](#quick-diagnosis)
+- [Hardware Issues](#hardware-issues)
+- [Software Issues](#software-issues)
+- [Network Issues](#network-issues)
+- [Web Interface Issues](#web-interface-issues)
+- [Sensor Issues](#sensor-issues)
+- [Advanced Debugging](#advanced-debugging)
 
 ---
 
-## 💡 LED Strip Issues
+## Quick Diagnosis
 
-### Symptom: LEDs don't light up at all
+### Symptom-Based Problem Finder
+
+**Nothing works at all:**
+→ [Power Supply Issues](#power-supply-issues)
+
+**Arduino not responding:**
+→ [Arduino Board Issues](#arduino-board-issues)
+
+**LEDs not lighting:**
+→ [LED Strip Issues](#led-strip-issues)
+
+**LCD blank or garbled:**
+→ [LCD Display Issues](#lcd-display-issues)
+
+**Buttons don't respond:**
+→ [Button Issues](#button-issues)
+
+**Time is wrong:**
+→ [RTC Issues](#rtc-issues)
+
+**Temperature readings error:**
+→ [DHT22 Sensor Issues](#dht22-sensor-issues)
+
+**Can't connect to WiFi:**
+→ [WiFi Connection Issues](#wifi-connection-issues)
+
+**Web page won't load:**
+→ [Web Server Issues](#web-server-issues)
+
+**System crashes/resets:**
+→ [Stability Issues](#stability-issues)
+
+---
+
+## Hardware Issues
+
+### Power Supply Issues
+
+#### Problem: Nothing turns on, no lights, no display
+
 **Diagnostic Steps:**
-1. **Check power connections**
-   ```
-   Red wire (5V) → Arduino 5V
-   Black wire (GND) → Arduino GND
-   Data wire → Correct digital pin
-   ```
-
-2. **Verify data pin assignment**
-   ```cpp
-   // In config.h, check these match your wiring:
-   #define PIN_LEDS_MINUTE_SECOND  9
-   #define PIN_LEDS_HOUR          10
-   #define PIN_LEDS_AIR_QUALITY   11
-   ```
-
-3. **Test with simple code**
-   - Upload `testing/test_codes/test_led/test_led.ino`
-   - Should show rainbow pattern
-
-**Common Fixes:**
-- Reverse data wire direction (DOUT to DIN)
-- Check for broken first LED (bypass and test)
-- Verify LED strip type (WS2812B vs WS2811)
-
-### Symptom: Some LEDs don't work or show wrong colors
-**Causes:**
-- Damaged LEDs in strip
-- Signal degradation over distance
-- Power supply voltage drop
+1. Check power supply is plugged in and turned on
+2. Verify power supply voltage with multimeter (should be ~5V)
+3. Check power connections to Arduino and components
+4. Verify common ground connections
 
 **Solutions:**
-1. **Identify problem location**
-   - LEDs work before problem point
-   - All LEDs after problem point fail
+```
+Issue: Power supply unplugged
+Fix: Plug in power supply
 
-2. **Power injection** (for long strips)
-   ```
-   Add 5V/GND connection every 60 LEDs
-   Use 18 AWG wire for power injection
-   ```
+Issue: Power supply too weak (< 5V/3A)
+Fix: Use 5V/5A power supply minimum
 
-3. **Signal level shifting** (advanced)
-   - Add 74HCT245 level shifter for reliable data signal
-   - Or use 330Ω resistor in data line
+Issue: Fuse blown in power supply
+Fix: Replace power supply
 
-### Symptom: LEDs show wrong colors
-**Quick Fixes:**
-1. **Check color order in code**
-   ```cpp
-   // Try different color orders:
-   NEO_GRB  // Most WS2812B strips
-   NEO_RGB  // Some variations
-   NEO_BRG  // Less common
-   ```
+Issue: Loose connections
+Fix: Secure all power wiring, use proper connectors
 
-2. **Test with known colors**
-   ```cpp
-   strip.setPixelColor(0, 255, 0, 0);   // Should be red
-   strip.setPixelColor(1, 0, 255, 0);   // Should be green
-   strip.setPixelColor(2, 0, 0, 255);   // Should be blue
-   ```
+Issue: Voltage drop in wires
+Fix: Use thicker wires (18-22 AWG), keep runs short
+```
+
+**Expected Voltages:**
+- Power supply output: 5.0V ± 0.25V
+- At Arduino 5V pin: 4.75V - 5.25V
+- At LED VCC: 4.75V minimum
+- At sensor VCC: 4.5V - 5.5V
 
 ---
 
-## 📟 LCD Display Issues
+#### Problem: Arduino powers on but components don't work
 
-### Symptom: LCD shows no text or garbled characters
 **Diagnostic Steps:**
-1. **I2C Address Scan**
-   - Run I2C scanner code
-   - Common addresses: 0x27, 0x3F, 0x20
-
-2. **Check wiring**
-   ```
-   LCD → Arduino UNO R4
-   SDA → A4 (or dedicated SDA pin)
-   SCL → A5 (or dedicated SCL pin)  
-   VCC → 5V
-   GND → GND
-   ```
-
-3. **Test with simple code**
-   - Upload `testing/test_codes/test_lcd/test_lcd.ino`
-   - Should show test patterns
-
-**Common Fixes:**
-- Adjust I2C address in code to match scanner results
-- Check for loose connections on I2C backpack
-- Verify 5V power to LCD (not 3.3V)
-
-### Symptom: LCD backlight works but no text
-**Causes:** 
-- Wrong I2C address
-- Damaged LCD module
-- I2C communication issues
+1. Measure voltage at Arduino 5V pin
+2. Measure voltage at component VCC pins
+3. Check current draw with multimeter
+4. Verify ground continuity
 
 **Solutions:**
-1. **Try different I2C addresses**
-   ```cpp
-   // Common addresses to try:
-   LiquidCrystal_I2C lcd(0x27, 20, 4);
-   LiquidCrystal_I2C lcd(0x3F, 20, 4);
-   LiquidCrystal_I2C lcd(0x20, 20, 4);
-   ```
+```
+Issue: USB power only (insufficient for LEDs/LCD)
+Fix: Connect external 5V power supply
 
-2. **Check contrast** (if adjustable)
-   - Look for small potentiometer on I2C backpack
-   - Turn slowly while observing display
+Issue: Arduino can't supply enough current
+Fix: Power LEDs directly from external supply, not through Arduino
 
-### Symptom: Text appears but is unreadable
-**Quick Fixes:**
-- Adjust contrast potentiometer
-- Check 5V power supply stability
-- Try different I2C pull-up resistors (4.7kΩ)
+Issue: Bad ground connection
+Fix: Ensure all GNDs connected together (common ground)
 
----
+Issue: Voltage regulator overheating
+Fix: Reduce load, improve heat dissipation
 
-## 🌡️ Temperature Sensor Issues
-
-### Symptom: Temperature shows "NaN" or obviously wrong values
-**Diagnostic Steps:**
-1. **Check DHT22 wiring**
-   ```
-   DHT22 → Arduino
-   Pin 1 (VCC) → 5V
-   Pin 2 (Data) → Digital pin (D6 or D7)
-   Pin 3 (NC) → Not connected
-   Pin 4 (GND) → GND
-   ```
-
-2. **Test sensors individually**
-   - Upload `testing/test_codes/test_sensors/test_sensors.ino`
-   - Check serial monitor for readings
-
-3. **Verify power supply**
-   - DHT22 requires stable 3.3-5V
-   - Check voltage at sensor pins with multimeter
-
-**Common Fixes:**
-- Add 10kΩ pull-up resistor on data line (usually not needed)
-- Replace sensor if consistently failing
-- Allow 2-3 seconds between readings
-- Wait 2 seconds after power-up before first reading
-
-### Symptom: One sensor works, other doesn't
-**Likely Causes:**
-- Wiring error on non-working sensor
-- Damaged sensor
-- Pin conflict in software
-
-**Solutions:**
-1. **Swap sensor connections**
-   - If problem follows sensor: sensor is damaged
-   - If problem stays with pin: wiring or software issue
-
-2. **Check pin assignments**
-   ```cpp
-   #define PIN_DHT_INDOOR  6
-   #define PIN_DHT_OUTDOOR 7
-   ```
-
-### Symptom: Readings are unstable or jump around
-**Causes:** 
-- Power supply noise
-- Electromagnetic interference
-- Damaged sensor
-
-**Solutions:**
-- Add 100µF capacitor near sensors
-- Keep sensor wires away from LED strips
-- Use shielded cable for outdoor sensor
-- Filter readings in software (moving average)
-
----
-
-## 🌐 WiFi Connection Issues
-
-### Symptom: Cannot connect to WiFi network
-**Diagnostic Steps:**
-1. **Check credentials**
-   ```cpp
-   // In secret.h:
-   const char* ssid = "YourWiFiName";     // Exact name
-   const char* pass = "YourWiFiPassword"; // Case sensitive
-   ```
-
-2. **Test WiFi signal strength**
-   - Move Arduino closer to router
-   - Check for 2.4GHz vs 5GHz (Arduino only supports 2.4GHz)
-
-3. **Monitor connection process**
-   ```cpp
-   Serial.print("Connecting to: ");
-   Serial.println(ssid);
-   // Enable debug output
-   ```
-
-**Common Fixes:**
-- Verify WiFi credentials are exactly correct
-- Check network security type (WPA2 supported)
-- Restart router/modem
-- Try different WiFi channel (1, 6, or 11)
-- Check for MAC address filtering
-
-### Symptom: Connects to WiFi but can't reach internet
-**Solutions:**
-- Check router's internet connection
-- Verify DNS settings
-- Try different NTP servers:
-  ```cpp
-  "pool.ntp.org"
-  "time.nist.gov"  
-  "time.google.com"
-  ```
-
-### Symptom: Connection drops frequently
-**Causes:**
-- Weak signal strength
-- Power supply issues
-- Router configuration
-
-**Solutions:**
-- Improve WiFi antenna positioning
-- Use WiFi extender/repeater
-- Implement connection retry logic
-- Check for power supply voltage drops
-
----
-
-## 🔘 Button Issues
-
-### Symptom: Buttons don't respond or respond erratically
-**Diagnostic Steps:**
-1. **Check wiring**
-   ```
-   Button → Arduino
-   One leg → Digital pin (D2 or D3)
-   Other leg → GND
-   ```
-
-2. **Test with multimeter**
-   - Should read 0Ω when pressed, infinite when released
-   - Check for intermittent connections
-
-3. **Use button test code**
-   - Upload `testing/test_codes/test_buttons/test_buttons.ino`
-   - Monitor serial output while pressing buttons
-
-**Common Fixes:**
-- Clean button contacts with contact cleaner
-- Check for loose connections
-- Verify INPUT_PULLUP mode in software
-- Add debouncing delay in code
-
-### Symptom: Multiple button presses registered
-**Cause:** Button bounce (mechanical)
-
-**Software Solution:**
-```cpp
-// Already implemented in OneButton library
-button.setDebounceTicks(50);  // 50ms debounce
+Issue: Polarity reversed
+Fix: Check +/- connections, correct any reversed polarity
 ```
 
 ---
 
-## 🕐 DS3231 RTC Issues
+### Arduino Board Issues
 
-### Symptom: DS3231 not detected on I2C bus
+#### Problem: Arduino not detected by computer
+
 **Diagnostic Steps:**
-1. **Run I2C scanner** - DS3231 should appear at address 0x68
-2. **Check wiring**
-   ```
-   DS3231 → Arduino UNO R4
-   VCC → 5V (or 3.3V)
-   GND → GND
-   SDA → A4 (shared with LCD)
-   SCL → A5 (shared with LCD)
-   ```
-3. **Test with DS3231 test code**
-   - Upload `testing/test_codes/test_rtc/test_rtc.ino`
-   - Monitor serial output for detection
-
-**Common Fixes:**
-- Verify I2C connections (SDA/SCL not swapped)
-- Check power supply to DS3231 (3.3V or 5V both work)
-- Ensure no short circuits on I2C bus
-- Try different DS3231 module if suspected faulty
-
-### Symptom: Time resets to 2000 or compile time on each boot
-**Cause:** DS3231 losing power, no battery backup
+1. Try different USB cable
+2. Try different USB port on computer
+3. Check Device Manager (Windows) or System Report (macOS)
+4. Test Arduino with simple blink sketch
 
 **Solutions:**
-1. **Install backup battery**
-   - Insert CR2032 lithium battery in DS3231 module
-   - Battery provides backup power during main power loss
-   
-2. **Check battery connection**
-   - Ensure battery holder contacts are clean
-   - Verify battery voltage (should be 3V)
-   - Replace battery if old (8-10 year lifespan)
+```
+Issue: Bad USB cable (data lines broken)
+Fix: Use known-good USB cable with data capability
 
-### Symptom: Time drifts significantly over days/weeks
-**Expected Performance:** DS3231 should be accurate to ±2ppm (±1 minute per year)
+Issue: USB port not working
+Fix: Try different USB port, preferably USB 3.0
 
-**Diagnostic:**
-1. **Monitor drift with test code**
-   - Use `test_rtc.ino` to track drift over time
-   - Compare with NTP time sync
-   
-2. **Check temperature compensation**
-   - DS3231 has built-in temperature compensation
-   - Extreme temperatures may affect accuracy
+Issue: Driver not installed (Windows)
+Fix: Install Arduino driver from arduino.cc
 
-**Solutions:**
-- Most DS3231 modules are very accurate out of box
-- If drift is excessive (>1 minute/month), module may be faulty
-- Consider aging offset adjustment (advanced feature)
+Issue: Board in bootloader mode stuck
+Fix: Double-tap reset button to enter bootloader
 
-### Symptom: Cannot set time or time doesn't update
-**Causes:**
-- Communication error with DS3231
-- Faulty module
-- Power supply issues
+Issue: Damaged USB port on Arduino
+Fix: May require board replacement or serial programming
 
-**Solutions:**
-1. **Verify I2C communication**
-   ```cpp
-   // Check if DS3231 responds
-   if (!rtc.begin()) {
-     Serial.println("DS3231 not found!");
-   }
-   ```
-
-2. **Try manual time setting**
-   ```cpp
-   // Set specific time
-   rtc.adjust(DateTime(2025, 1, 20, 12, 0, 0));
-   ```
-
-3. **Check for hardware issues**
-   - Try different DS3231 module
-   - Verify I2C pull-up resistors (usually built-in)
+Issue: Wrong board selected in Arduino IDE
+Fix: Tools → Board → Arduino Uno R4 WiFi
+```
 
 ---
 
-## 🕐 Time/Clock Issues (Updated for DS3231)
+#### Problem: Sketch won't upload
 
-### Symptom: Clock shows wrong time after DS3231 upgrade
-**Solutions:**
-1. **Initial time setting**
-   - DS3231 maintains time independently
-   - Set time via NTP sync or manual setting
-   ```cpp
-   synchronizeDS3231WithNTP(); // Preferred method
-   ```
-
-2. **Check timezone setting**
-   ```cpp
-   #define TIME_ZONE_OFFSET 1  // Paris = UTC+1
-   ```
-
-3. **Verify NTP synchronization**
-   - Check serial monitor for sync messages
-   - DS3231 will maintain accurate time between syncs
-
-### Symptom: Time jumps or behaves erratically
-**Causes:**
-- I2C communication interference
-- Power supply instability to DS3231
-- Software timing conflicts
+**Diagnostic Steps:**
+1. Verify correct board selected in Arduino IDE
+2. Verify correct COM port selected
+3. Check for serial monitor open (close it)
+4. Try upload with reset button press
 
 **Solutions:**
-- Keep I2C wires short and away from LED strips
-- Add 100µF capacitor near DS3231 power pins
-- Ensure stable 5V power supply
-- Check for conflicting timing code
+```
+Issue: Wrong board selected
+Fix: Tools → Board → Arduino Uno R4 WiFi
 
-### Symptom: DS3231 temperature reading seems wrong
-**Normal Range:** DS3231 temperature sensor accuracy is ±3°C
+Issue: Wrong port selected  
+Fix: Tools → Port → [select correct COM/ttyUSB port]
 
-**Diagnostic:**
-1. **Compare with other sensors**
-   - DS3231 temperature vs DHT22 readings
-   - Should be roughly similar (within 5°C)
+Issue: Serial monitor open
+Fix: Close serial monitor before uploading
 
-2. **Check for heat sources**
-   - DS3231 may read higher if near warm components
-   - LED strips and Arduino generate heat
+Issue: Sketch too large
+Fix: Reduce code size, remove debug strings, optimize
 
-**Note:** DS3231 temperature is primarily for internal crystal compensation, not environmental monitoring.
+Issue: Compilation errors
+Fix: Check for missing libraries, syntax errors
+
+Issue: Bootloader corruption
+Fix: Re-burn bootloader using ISP programmer
+```
 
 ---
 
-## 🔍 Advanced Debugging
+### LED Strip Issues
 
-### Enable Debug Mode
-```cpp
-// In config.h:
-#define ENABLE_SERIAL_DEBUG true
+#### Problem: LEDs don't light up at all
 
-// In main code:
-Serial.begin(115200);
-// Watch serial monitor for detailed information
-```
-
-### Memory Issues
-**Symptom:** Random crashes, strange behavior
-
-**Diagnostic:**
-```cpp
-// Check free memory:
-extern int __heap_start, *__brkval;
-int freeMemory = (int) &freeMemory - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
-Serial.print("Free memory: ");
-Serial.println(freeMemory);
-```
+**Diagnostic Steps:**
+1. Check power supply to LED strips (5V present?)
+2. Verify data line connections
+3. Test with simple NeoPixel example sketch
+4. Check LED strip orientation (data flow direction)
 
 **Solutions:**
-- Reduce string usage (use F() macro for constants)
-- Optimize data structures
-- Check for memory leaks in loops
+```
+Issue: No power to LED strips
+Fix: Connect 5V and GND to LED strip VCC/GND
 
-### Serial Debug Output
+Issue: Insufficient power (USB only)
+Fix: MUST use external 5V/5A power supply
+
+Issue: Data line not connected
+Fix: Connect Arduino pin to LED "Data In" (DIN)
+
+Issue: LED strip backwards
+Fix: Connect to "Data In" end, not "Data Out" end
+
+Issue: Wrong pin in code
+Fix: Verify pin numbers match wiring (9, 10, 11)
+
+Issue: Dead first LED
+Fix: Cut off first LED, solder to next LED
+
+Issue: Wrong LED type in code
+Fix: Check if strip is NEO_GRB or NEO_RGB
+```
+
+---
+
+#### Problem: LEDs are dim or wrong colors
+
+**Diagnostic Steps:**
+1. Measure voltage at LED strips (should be 5V)
+2. Check current draw with multimeter
+3. Test brightness settings in code
+4. Verify color order (RGB vs GRB)
+
+**Solutions:**
+```
+Issue: Voltage drop (insufficient power)
+Fix: Use thicker wires, shorter runs, higher capacity supply
+
+Issue: USB power only
+Fix: Connect external 5V/5A supply directly to LED strips
+
+Issue: Brightness set too low
+Fix: Increase brightness in code or web interface
+
+Issue: Color order wrong (GRB vs RGB)
+Fix: Change NEO_GRB to NEO_RGB (or vice versa) in code
+
+Issue: Mixed LED types
+Fix: Use same type/brand LEDs throughout
+
+Issue: Overheating
+Fix: Reduce brightness, improve air circulation
+
+Issue: Long wire runs causing signal degradation
+Fix: Add 330Ω resistor on data line, use shorter wires
+```
+
+---
+
+#### Problem: Some LEDs work, some don't
+
+**Diagnostic Steps:**
+1. Identify which LEDs aren't working
+2. Check if dead LEDs are in sequence
+3. Test continuity through data line
+4. Measure voltage along strip
+
+**Solutions:**
+```
+Issue: Data line broken at specific point
+Fix: Bypass broken section or replace strip
+
+Issue: Dead LEDs in middle of strip
+Fix: Cut out dead LEDs, reconnect data line
+
+Issue: Poor solder joint
+Fix: Reflow solder joints, use proper soldering technique
+
+Issue: Voltage drop along strip
+Fix: Inject power at multiple points along strip
+
+Issue: Capacitance on data line
+Fix: Add 100µF capacitor across power at beginning
+
+Issue: Signal integrity
+Fix: Add 330Ω resistor between Arduino and first LED
+```
+
+---
+
+### LCD Display Issues
+
+#### Problem: LCD shows nothing (blank screen)
+
+**Diagnostic Steps:**
+1. Check backlight (dim glow visible?)
+2. Adjust contrast potentiometer
+3. Verify I2C connections (SDA/SCL)
+4. Run I2C scanner to detect device
+
+**Solutions:**
+```
+Issue: Backlight off
+Fix: Check backlight jumper on module back, verify power
+
+Issue: Contrast too low
+Fix: Adjust blue potentiometer on back with screwdriver
+
+Issue: No power
+Fix: Connect VCC to 5V, GND to GND
+
+Issue: I2C not connected
+Fix: SDA → A4, SCL → A5, verify wiring
+
+Issue: Wrong I2C address
+Fix: Run I2C scanner, update address in code (0x27 or 0x3F)
+
+Issue: LCD module damaged
+Fix: Test with another LCD or replace module
+```
+
+---
+
+#### Problem: LCD shows garbled text or blocks
+
+**Diagnostic Steps:**
+1. Adjust contrast potentiometer
+2. Check I2C address in code
+3. Verify 5V power supply voltage
+4. Test with simple LCD example sketch
+
+**Solutions:**
+```
+Issue: Contrast adjustment needed
+Fix: Turn potentiometer on back until text clear
+
+Issue: Wrong I2C address
+Fix: Change LCD_I2C_ADDRESS from 0x27 to 0x3F (or vice versa)
+
+Issue: Insufficient power
+Fix: Use external 5V supply, not USB only
+
+Issue: I2C communication errors
+Fix: Add 4.7kΩ pull-up resistors on SDA/SCL
+
+Issue: Interference on I2C bus
+Fix: Keep I2C wires short, away from power wires
+
+Issue: Multiple devices same address
+Fix: Check no other I2C device uses same address
+```
+
+---
+
+#### Problem: LCD flickers or resets randomly
+
+**Diagnostic Steps:**
+1. Check power supply stability
+2. Measure voltage under load
+3. Look for voltage drops
+4. Check for loose connections
+
+**Solutions:**
+```
+Issue: Insufficient power capacity
+Fix: Use larger power supply (5V/3A minimum)
+
+Issue: Long power wire runs
+Fix: Use thicker wires (18-22 AWG)
+
+Issue: Loose connections
+Fix: Secure all power and I2C connections
+
+Issue: Ground loops
+Fix: Ensure single-point grounding
+
+Issue: Excessive load on I2C bus
+Fix: Reduce I2C clock speed if needed
+
+Issue: Code updating too frequently
+Fix: Reduce LCD update rate, use anti-flicker techniques
+```
+
+---
+
+### Button Issues
+
+#### Problem: Button presses not detected
+
+**Diagnostic Steps:**
+1. Verify button wiring (pin to GND)
+2. Test button with multimeter (continuity)
+3. Check button orientation
+4. Test with simple button example
+
+**Solutions:**
+```
+Issue: Button not connected
+Fix: Connect one leg to Arduino pin, other to GND
+
+Issue: Button wired to wrong pin
+Fix: Verify Pin 2 (Button 1) and Pin 3 (Button 2)
+
+Issue: Button damaged/stuck
+Fix: Replace button, check for debris
+
+Issue: No pull-up resistor (if not using INPUT_PULLUP)
+Fix: Use pinMode(pin, INPUT_PULLUP) or add 10kΩ resistor
+
+Issue: Pin configured as OUTPUT
+Fix: Set pin as INPUT_PULLUP in setup()
+
+Issue: Button pressed but backwards in circuit
+Fix: Buttons are non-polarized, should work either way
+```
+
+---
+
+#### Problem: Button triggers multiple times (bouncing)
+
+**Diagnostic Steps:**
+1. Check debounce code implementation
+2. Test with different button
+3. Monitor serial output for bounces
+
+**Solutions:**
+```
+Issue: No debounce implemented
+Fix: Use OneButton library (already in test code)
+
+Issue: Bad quality button (excessive bounce)
+Fix: Replace with better quality tactile switch
+
+Issue: Debounce time too short
+Fix: Increase debounce time from 50ms to 100ms
+
+Issue: Electrical noise
+Fix: Add 0.1µF capacitor across button terminals
+
+Issue: Long wires acting as antenna
+Fix: Keep button wires short (<15cm)
+
+Issue: Button mechanically worn
+Fix: Replace button with new one
+```
+
+---
+
+### RTC Issues
+
+#### Problem: RTC not detected on I2C
+
+**Diagnostic Steps:**
+1. Run I2C scanner
+2. Verify connections (SDA/SCL)
+3. Check 5V power to module
+4. Test with simple RTC example
+
+**Solutions:**
+```
+Issue: I2C not connected
+Fix: SDA → A4, SCL → A5
+
+Issue: No power to RTC
+Fix: VCC → 5V, GND → GND
+
+Issue: Wrong I2C address expected
+Fix: DS3231 uses 0x68 (fixed)
+
+Issue: I2C pull-up resistors missing
+Fix: Most modules have built-in, add 4.7kΩ if not
+
+Issue: Damaged RTC module
+Fix: Test with multimeter, replace if needed
+
+Issue: I2C bus conflict
+Fix: Disconnect other I2C devices, test individually
+```
+
+---
+
+#### Problem: Time keeps resetting
+
+**Diagnostic Steps:**
+1. Check if battery installed (CR2032)
+2. Measure battery voltage (should be ~3V)
+3. Check "lostPower()" status in serial
+4. Verify time setting code works
+
+**Solutions:**
+```
+Issue: No battery installed
+Fix: Install CR2032 battery in holder
+
+Issue: Battery dead
+Fix: Replace with new CR2032 (3V)
+
+Issue: Battery holder poor contact
+Fix: Clean contacts, ensure battery seated properly
+
+Issue: Code calls adjust() every boot
+Fix: Only call adjust() when lostPower() is true
+
+Issue: Power supply unstable
+Fix: Use stable 5V supply, add capacitor
+
+Issue: VBAT pin not connected
+Fix: Check DS3231 module schematic, verify VBAT
+```
+
+---
+
+#### Problem: Time drifts (inaccurate)
+
+**Diagnostic Steps:**
+1. Monitor drift over 24 hours
+2. Check temperature readings
+3. Verify NTP sync working
+4. Compare to accurate time source
+
+**Solutions:**
+```
+Issue: NTP not syncing
+Fix: Check WiFi, verify NTP server accessible
+
+Issue: Normal DS3231 drift (±2ppm)
+Fix: This equals ±1 minute/year - acceptable
+
+Issue: Temperature extremes
+Fix: Keep RTC at stable room temperature
+
+Issue: Fake/counterfeit DS3231
+Fix: Purchase from reputable supplier
+
+Issue: Crystal damaged
+Fix: Replace RTC module
+
+Issue: Timezone offset wrong
+Fix: Verify TIME_ZONE_OFFSET in config.h
+```
+
+---
+
+### DHT22 Sensor Issues
+
+#### Problem: Sensor returns "ERROR" or NaN
+
+**Diagnostic Steps:**
+1. Check sensor wiring (VCC, GND, Data)
+2. Verify 2-second minimum between reads
+3. Test with simple DHT example
+4. Check pull-up resistor (10kΩ)
+
+**Solutions:**
+```
+Issue: Wiring incorrect
+Fix: VCC → 5V, GND → GND, Data → Arduino pin
+
+Issue: Reading too frequently
+Fix: Minimum 2 seconds between reads (built into library)
+
+Issue: No pull-up resistor
+Fix: Add 10kΩ resistor between Data and VCC (some modules have built-in)
+
+Issue: Data wire too long (>20cm)
+Fix: Keep data wire short, use shielded cable
+
+Issue: Power supply noisy
+Fix: Add 0.1µF capacitor across sensor VCC/GND
+
+Issue: Sensor damaged
+Fix: DHT22 sensitive to overvoltage - replace if damaged
+
+Issue: Timing conflicts in code
+Fix: Ensure no blocking delays, use non-blocking code
+```
+
+---
+
+#### Problem: Temperature readings seem wrong
+
+**Diagnostic Steps:**
+1. Compare to known-good thermometer
+2. Check sensor location (direct sunlight? heat source?)
+3. Wait 5 minutes for stabilization
+4. Verify units (Celsius vs Fahrenheit)
+
+**Solutions:**
+```
+Issue: Self-heating effect
+Fix: Normal - sensor reads 1-2°C above ambient when reading
+
+Issue: Direct sunlight or heat source
+Fix: Shield sensor from direct sun, heat sources
+
+Issue: Poor ventilation
+Fix: Ensure air can circulate around sensor
+
+Issue: Units wrong in code
+Fix: readTemperature() for °C, readTemperature(true) for °F
+
+Issue: Calibration offset
+Fix: Add/subtract calibration constant if needed
+
+Issue: Sensor mounted on PCB with heat sources
+Fix: Mount sensor remotely on wires
+```
+
+---
+
+### MQ135 Air Quality Sensor Issues
+
+#### Problem: Air quality readings always max (1023) or min (0)
+
+**Diagnostic Steps:**
+1. Check sensor wiring (VCC, GND, AO)
+2. Verify sensor has been powered for warm-up (30s minimum)
+3. Check if sensor needs burn-in (24-48 hours)
+4. Measure voltage at AO pin
+
+**Solutions:**
+```
+Issue: Not warmed up
+Fix: Wait 30 seconds after power on
+
+Issue: Not burned in
+Fix: Leave powered continuously for 24-48 hours
+
+Issue: AO not connected
+Fix: Connect AO to Arduino A0
+
+Issue: Using DO instead of AO
+Fix: Use analog out (AO), not digital out (DO)
+
+Issue: Sensor saturated
+Fix: Ventilate area, sensor detecting high pollution
+
+Issue: Sensor damaged
+Fix: MQ sensors delicate - replace if damaged
+
+Issue: Wrong sensor type
+Fix: Verify sensor is MQ135, not MQ2/MQ7/etc
+```
+
+---
+
+## Software Issues
+
+### Compilation Errors
+
+#### Problem: "Library not found" errors
+
+**Solution:**
+```
+1. Open Arduino IDE
+2. Sketch → Include Library → Manage Libraries
+3. Search for missing library
+4. Click Install
+5. Restart Arduino IDE
+6. Try compiling again
+```
+
+**Required Libraries:**
+- Adafruit NeoPixel
+- LiquidCrystal I2C
+- RTClib (by Adafruit)
+- DHT sensor library (by Adafruit)
+- OneButton
+- WiFiS3 (built-in for Uno R4)
+
+---
+
+#### Problem: "Sketch too large" error
+
+**Solutions:**
+```
+Issue: Too many features/debug strings
+Fix: Remove Serial.print() debug statements
+Fix: Use F() macro for string literals: Serial.println(F("text"));
+Fix: Disable unused features in config.h
+Fix: Optimize code, remove duplicate code
+
+Issue: Too many libraries
+Fix: Remove unused #include statements
+
+Issue: Wrong board selected
+Fix: Ensure Arduino Uno R4 WiFi selected (has more memory than Uno)
+
+Issue: Flash memory genuinely full
+Fix: Simplify project or use larger board
+```
+
+---
+
+### Upload Errors
+
+#### Problem: "avrdude: stk500_recv(): programmer is not responding"
+
+**Solutions:**
+```
+1. Close Serial Monitor
+2. Disconnect all components except USB
+3. Press reset button on Arduino
+4. Try upload immediately after reset
+5. Try different USB port
+6. Try different USB cable
+7. Verify correct board and port selected
+```
+
+---
+
+### Runtime Errors
+
+#### Problem: Arduino resets repeatedly
+
+**Diagnostic Steps:**
+1. Monitor serial output for reset cause
+2. Check power supply capacity
+3. Look for watchdog timer triggers
+4. Check for infinite loops or stack overflow
+
+**Solutions:**
+```
+Issue: Insufficient power (brownout)
+Fix: Use adequate power supply (5V/5A)
+
+Issue: Watchdog timer timeout
+Fix: Disable watchdog or increase timeout
+
+Issue: Stack overflow
+Fix: Reduce local variable sizes, use dynamic allocation carefully
+
+Issue: Infinite loop in code
+Fix: Add timeout conditions, use non-blocking code
+
+Issue: Memory corruption
+Fix: Check array bounds, buffer overflows
+
+Issue: Short circuit
+Fix: Check for wiring shorts, especially on LEDs/LCD
+```
+
+---
+
+## Network Issues
+
+### WiFi Connection Issues
+
+#### Problem: "WiFi connection failed"
+
+**Diagnostic Steps:**
+1. Verify SSID and password in secrets.h
+2. Check if network is 2.4GHz (not 5GHz)
+3. Verify WPA2 security (WPA3 not supported)
+4. Check router settings
+
+**Solutions:**
+```
+Issue: Wrong SSID or password
+Fix: Double-check credentials in secrets.cpp
+
+Issue: 5GHz network
+Fix: Arduino R4 only supports 2.4GHz - configure router for 2.4GHz
+
+Issue: Hidden SSID
+Fix: Make SSID visible or manually specify in code
+
+Issue: MAC filtering enabled
+Fix: Add Arduino MAC address to router whitelist
+
+Issue: WPA3 encryption
+Fix: Enable WPA2 compatibility mode on router
+
+Issue: Special characters in password
+Fix: Ensure password properly escaped in code
+
+Issue: Too far from router
+Fix: Move closer or use WiFi repeater/extender
+
+Issue: Network congested
+Fix: Change WiFi channel in router settings
+```
+
+---
+
+#### Problem: WiFi connects then disconnects
+
+**Diagnostic Steps:**
+1. Check signal strength (should be > -80 dBm)
+2. Monitor for interference
+3. Check router logs
+4. Test with different location
+
+**Solutions:**
+```
+Issue: Weak signal
+Fix: Move Arduino closer to router, improve antenna
+
+Issue: Channel interference
+Fix: Change WiFi channel to less congested one (1, 6, or 11)
+
+Issue: Router DHCP table full
+Fix: Increase DHCP pool size or assign static IP
+
+Issue: Router dropping inactive clients
+Fix: Adjust router timeout settings
+
+Issue: Power supply insufficient
+Fix: WiFi uses more power - use adequate supply
+
+Issue: Memory leak in code
+Fix: Monitor free memory, check for leaks
+
+Issue: Overheating
+Fix: Improve ventilation, reduce workload
+```
+
+---
+
+### NTP Synchronization Issues
+
+#### Problem: NTP sync fails
+
+**Diagnostic Steps:**
+1. Verify internet connectivity
+2. Check firewall settings (UDP port 123)
+3. Try different NTP server
+4. Check DNS resolution
+
+**Solutions:**
+```
+Issue: No internet access
+Fix: Verify router connected to internet
+
+Issue: Firewall blocking UDP port 123
+Fix: Allow UDP port 123 outbound
+
+Issue: NTP server down
+Fix: Change NTP server in code:
+  - pool.ntp.org (default)
+  - time.nist.gov
+  - time.google.com
+
+Issue: DNS resolution failing
+Fix: Use IP address instead of hostname
+
+Issue: Timeout too short
+Fix: Increase NTP timeout in code
+
+Issue: Incorrect timezone offset
+Fix: Verify TIME_ZONE_OFFSET matches your location
+```
+
+---
+
+## Web Interface Issues
+
+### Web Server Issues
+
+#### Problem: Can't access web interface
+
+**Diagnostic Steps:**
+1. Verify Arduino has IP address (check serial)
+2. Ping Arduino IP from computer
+3. Verify on same network
+4. Check firewall on computer
+
+**Solutions:**
+```
+Issue: No IP address assigned
+Fix: Check WiFi connection, verify DHCP enabled
+
+Issue: Wrong IP address
+Fix: Check serial monitor for correct IP
+
+Issue: Different network/subnet
+Fix: Connect computer to same WiFi network as Arduino
+
+Issue: Firewall blocking port 80
+Fix: Allow port 80 in computer firewall
+
+Issue: Arduino not responding to ping
+Fix: Check power, verify WiFi connected
+
+Issue: Wrong URL format
+Fix: Use http://192.168.1.150 (not https://)
+```
+
+---
+
+#### Problem: Web page loads partially or slowly
+
+**Diagnostic Steps:**
+1. Check page size and memory usage
+2. Monitor serial for errors
+3. Try different browser
+4. Check network latency
+
+**Solutions:**
+```
+Issue: Insufficient memory on Arduino
+Fix: Reduce page complexity, optimize HTML/CSS
+
+Issue: Slow WiFi connection
+Fix: Improve signal strength, reduce interference
+
+Issue: Too many AJAX requests
+Fix: Reduce update frequency
+
+Issue: Large images/resources
+Fix: Optimize images, use compressed resources
+
+Issue: Browser caching disabled
+Fix: Enable caching, set proper cache headers
+
+Issue: Serial output slowing down web server
+Fix: Reduce debug print statements
+```
+
+---
+
+### Dashboard Issues
+
+#### Problem: Sensor values show "N/A" or don't update
+
+**Diagnostic Steps:**
+1. Check if sensors working (serial output)
+2. Verify API endpoint returns data
+3. Check browser console for JavaScript errors
+4. Monitor network tab in browser dev tools
+
+**Solutions:**
+```
+Issue: Sensors not providing data
+Fix: Check sensor connections, verify sensor test passes
+
+Issue: API endpoint failing
+Fix: Test endpoint directly: http://[IP]/api/status
+
+Issue: JavaScript errors
+Fix: Check browser console (F12), fix JavaScript
+
+Issue: Auto-refresh not working
+Fix: Verify setInterval() code, check for JavaScript errors
+
+Issue: Incorrect JSON parsing
+Fix: Verify API returns valid JSON
+
+Issue: CORS issues (if testing from file://)
+Fix: Access via http://[IP], not file://
+```
+
+---
+
+## Advanced Debugging
+
+### Serial Debugging
+
+**Enable verbose output:**
 ```cpp
-// Add debug prints throughout code:
-Serial.print("Function X called, value = ");
-Serial.println(someVariable);
+// In config.h
+#define DEBUG_MODE true
 
-// Use different debug levels:
-#if ENABLE_SERIAL_DEBUG
-  Serial.println("Debug: detailed information");
+// In code
+#ifdef DEBUG_MODE
+  Serial.println("Debug: Variable value = " + String(value));
 #endif
 ```
 
----
-
-## 📞 When to Seek Help
-
-### Before Asking for Help
-✅ **Include this information:**
-- Complete error messages from serial monitor
-- Photos of your wiring setup
-- Your specific hardware configuration
-- Steps you've already tried
-- Test results from individual component tests
-
-### What Makes a Good Bug Report
-1. **Clear problem description**
-2. **Expected vs actual behavior**
-3. **Reproducible steps**
-4. **Hardware/software versions**
-5. **Serial monitor output**
-
-### Community Resources
-- **GitHub Issues**: For bugs and feature requests
-- **Arduino Forums**: For general Arduino help
-- **Reddit r/arduino**: Community discussions
-- **Discord/Telegram**: Real-time chat support
+**Serial output tips:**
+- Use meaningful messages: "WiFi connected" not just "OK"
+- Print variable values: Serial.print("Temp: "); Serial.println(temp);
+- Use timestamps: Serial.print(millis()); Serial.print(": Message");
+- Flush buffer when needed: Serial.flush();
 
 ---
 
-## 🔄 Systematic Testing Approach
+### Memory Debugging
 
-When everything fails, return to basics:
+**Check free memory (AVR):**
+```cpp
+int freeRAM() {
+  extern int __heap_start, *__brkval;
+  int v;
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+}
 
-1. **Test Arduino alone** → `test_arduino.ino`
-2. **Test LCD only** → `test_lcd.ino`  
-3. **Test one LED strip** → `test_led.ino`
-4. **Test sensors individually** → `test_sensors.ino`
-5. **Test buttons** → `test_buttons.ino`
-6. **Test RTC** → `test_rtc.ino`
-7. **Combine working components gradually**
+void loop() {
+  Serial.print("Free RAM: ");
+  Serial.println(freeRAM());
+}
+```
 
-**Remember:** Most issues are simple wiring problems or configuration errors. Take your time, double-check connections, and test components individually before integrating everything together.
+**Memory leak detection:**
+1. Monitor free RAM over time
+2. Should remain stable
+3. Decreasing = potential memory leak
+4. Check for missing free() calls
+5. Avoid String class (use char arrays)
+
+---
+
+### I2C Debugging
+
+**I2C Scanner Sketch:**
+```cpp
+#include <Wire.h>
+
+void setup() {
+  Wire.begin();
+  Serial.begin(115200);
+  Serial.println("I2C Scanner");
+}
+
+void loop() {
+  byte error, address;
+  int nDevices = 0;
+
+  for(address = 1; address < 127; address++ ) {
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
+
+    if (error == 0) {
+      Serial.print("Device at 0x");
+      if (address<16) Serial.print("0");
+      Serial.println(address,HEX);
+      nDevices++;
+    }
+  }
+  
+  if (nDevices == 0) {
+    Serial.println("No I2C devices found");
+  }
+  
+  delay(5000);
+}
+```
+
+**Common I2C addresses:**
+- 0x27 or 0x3F: LCD
+- 0x68: DS3231 RTC
+- 0x76 or 0x77: BME280 (if used)
+
+---
+
+### Logic Analyzer
+
+For complex timing issues:
+1. Use cheap logic analyzer ($10-20)
+2. Connect to I2C lines (SDA/SCL)
+3. Use software like Pulseview
+4. Analyze I2C transactions
+5. Verify timing and ACK/NACK
+
+---
+
+### Multimeter Usage
+
+**Voltage checks:**
+- Power supply: 5.0V ± 0.25V
+- Arduino 5V pin: 4.75-5.25V
+- Sensor VCC: 4.5-5.5V
+
+**Continuity checks:**
+- GND connections: should beep
+- Data lines: no shorts to VCC/GND
+- Switch/button: beeps when pressed
+
+**Current measurement:**
+- Total system: should match expectations
+- LED strip: high current (1-5A)
+- Sensors: low current (<20mA each)
+
+---
+
+## Getting More Help
+
+If issues persist after trying solutions here:
+
+1. **Check documentation:**
+   - [Hardware Tests](./hardware_tests.md)
+   - [Software Tests](./software_tests.md)
+   - [Main Documentation](../docs/)
+
+2. **Search online:**
+   - Arduino forum: forum.arduino.cc
+   - Stack Overflow: stackoverflow.com
+   - Component-specific forums
+
+3. **Ask for help:**
+   - Provide detailed description
+   - Include error messages
+   - Share relevant code snippets
+   - Include photos of wiring
+   - Describe what you've already tried
+
+4. **Create GitHub issue:**
+   - Use issue template
+   - Include system information
+   - Attach serial monitor output
+   - Include test results
+
+---
+
+## Preventive Maintenance
+
+### Regular Checks (Monthly)
+
+- ✅ Verify all connections secure
+- ✅ Check for dust accumulation
+- ✅ Test sensor accuracy
+- ✅ Verify RTC battery voltage
+- ✅ Check power supply voltage
+- ✅ Update firmware if available
+
+### Cleaning
+
+- Use compressed air for dust
+- Clean LCD screen with microfiber cloth
+- Check for corrosion on contacts
+- Ensure good ventilation
+
+### Battery Replacement
+
+- CR2032 in DS3231: Every 8-10 years
+- Check battery voltage: 2.7-3.3V normal
+- Replace if voltage < 2.5V
+- Set time after battery replacement
+
+---
+
+**Remember:**
+- Always disconnect power before working on circuits
+- Double-check connections before applying power
+- Document changes you make
+- Keep backups of working configurations
+
+**Author:** F. Baillon  
+**Version:** 1.0.0  
+**Last Updated:** January 2025
