@@ -14,6 +14,7 @@
 #include "storage.h"
 #include "leds.h"
 #include "webpage.h"
+#include "datalog.h"
 
 // ==========================================
 // GLOBAL WEB SERVER
@@ -127,6 +128,39 @@ void handleWebServer() {
     // Route: API Config (GET)
     else if (request.indexOf("GET /api/config") >= 0) {
         String json = getConfigJSON();
+        
+        client.println("HTTP/1.1 200 OK");
+        client.println("Content-Type: application/json");
+        client.println("Connection: close");
+        client.println();
+        client.println(json);
+    }
+    
+    // Route: API History (GET) - New in Phase 3.3
+    else if (request.indexOf("GET /api/history") >= 0) {
+        // Extract count parameter if present (e.g., /api/history?count=50)
+        uint16_t count = 100;  // Default
+        int countPos = request.indexOf("count=");
+        if (countPos >= 0) {
+            int endPos = request.indexOf("&", countPos);
+            if (endPos < 0) endPos = request.indexOf(" ", countPos);
+            String countStr = request.substring(countPos + 6, endPos);
+            count = countStr.toInt();
+            if (count == 0) count = 100;
+        }
+        
+        String json = getBufferJSON(count);
+        
+        client.println("HTTP/1.1 200 OK");
+        client.println("Content-Type: application/json");
+        client.println("Connection: close");
+        client.println();
+        client.println(json);
+    }
+    
+    // Route: API Logging Stats (GET) - New in Phase 3.3
+    else if (request.indexOf("GET /api/logstats") >= 0) {
+        String json = getLogStatsJSON();
         
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: application/json");
@@ -394,4 +428,29 @@ void sendPageInChunks(WiFiClient& client, const char* content) {
         // Small delay to avoid buffer overflow
         delay(1);
     }
+}
+
+/**
+ * @brief Get logging statistics as JSON
+ * 
+ * Returns current data logging statistics including buffer status,
+ * MQTT connection, and counters.
+ * 
+ * @return JSON string with logging statistics
+ */
+String getLogStatsJSON() {
+    DataLogStats stats = getLogStats();
+    
+    String json = "{";
+    json += "\"bufferCount\":" + String(stats.bufferCount) + ",";
+    json += "\"bufferMax\":" + String(MAX_DATA_POINTS) + ",";
+    json += "\"bufferUsage\":" + String((stats.bufferCount * 100) / MAX_DATA_POINTS) + ",";
+    json += "\"totalLogged\":" + String(stats.totalLogged) + ",";
+    json += "\"totalSent\":" + String(stats.totalSent) + ",";
+    json += "\"mqttConnected\":" + String(stats.mqttConnected ? "true" : "false") + ",";
+    json += "\"lastLogTime\":" + String(stats.lastLogTime) + ",";
+    json += "\"lastSendTime\":" + String(stats.lastSendTime);
+    json += "}";
+    
+    return json;
 }

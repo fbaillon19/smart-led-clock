@@ -33,6 +33,7 @@
  * copies or substantial portions of the Software.
  */
 
+
 #include <Wire.h>
 
 // Include all module headers
@@ -45,6 +46,12 @@
 #include "display.h"
 #include "webserver.h"
 #include "storage.h"
+#include "datalog.h"
+
+// ==========================================
+// WIFI CLIENT (for MQTT)
+// ==========================================
+WiFiClient mqttWifiClient;
 
 // ==========================================
 // GLOBAL VARIABLES (definitions)
@@ -90,11 +97,13 @@ uint8_t runtimeColorSecondB = COLOR_SECOND_B;
 // SETUP
 // ==========================================
 void setup() {
-  DEBUG_BEGIN(115200);
-  delay(2000);
-  
-  DEBUG_PRINTLN("=== Smart LED Clock - Phase 5 (Refactored) ===");
-  DEBUG_PRINTLN("Initializing...");
+  #if DEBUG_MODE
+    Serial.begin(115200);
+    delay(6000);
+    
+    Serial.println("=== Smart LED Clock ===");
+    Serial.println("Initializing...");
+  #endif
 
   // Initialize I2C
   Wire.begin();
@@ -121,7 +130,9 @@ void setup() {
 
   // Initialize DS3231 RTC
   if (!initRTC()) {
-    DEBUG_PRINTLN("ERROR: RTC initialization failed!");
+#if DEBUG_MODE
+  Serial.println("ERROR: RTC initialization failed!");
+#endif
     displayStartupMessage(STR_DS3231_ERROR);
     while(1) delay(1000);
   }
@@ -132,7 +143,9 @@ void setup() {
   displayStartupMessage(STR_CONNECTING_WIFI);
   if (connectWiFi()) {
     wifiConnected = true;
-    DEBUG_PRINTLN("WiFi connected");
+#if DEBUG_MODE
+  Serial.println("WiFi connected");
+#endif
     displayStartupMessage(STR_WIFI_CONNECTED);
     delay(1000);
     
@@ -141,10 +154,14 @@ void setup() {
     if (syncTimeWithNTP()) {
       lastNTPSyncSuccess = true;
       lastNTPSync = millis();
-      DEBUG_PRINTLN("NTP sync successful");
+#if DEBUG_MODE
+  Serial.println("NTP sync successful");
+#endif
       displayStartupMessage(STR_TIME_SYNCED);
     } else {
-      DEBUG_PRINTLN("NTP sync failed");
+#if DEBUG_MODE
+  Serial.println("NTP sync failed");
+#endif
       displayStartupMessage(STR_USING_RTC_TIME);
     }
 
@@ -153,21 +170,34 @@ void setup() {
     initWebServer();
     delay(1000);
 
+    // Initialiser le data logging (Phase 3.3)
+    initDataLog(mqttWifiClient);
+#if DEBUG_MODE
+  Serial.println("Data logging initialized");
+#endif
+    delay(1000);
+
     // Initialiser le stockage EEPROM
     displayStartupMessage(STR_LOAD_CONFIG);
     initStorage();
     delay(1000);
   } else {
-    DEBUG_PRINTLN("WiFi failed");
+#if DEBUG_MODE
+  Serial.println("WiFi failed");
+#endif
     displayStartupMessage(STR_NO_WIFI);
   }
   delay(2000);
 
   // Display current time
   DateTime now = getCurrentTime();
-  DEBUG_PRINT("Current time: ");
+#if DEBUG_MODE
+  Serial.print("Current time: ");
+#endif
   printDateTime(now);
-  DEBUG_PRINTLN();
+#if DEBUG_MODE
+  Serial.println();
+#endif
 
   // Initial sensor reading
   displayStartupMessage(STR_READING_SENSORS);
@@ -181,8 +211,10 @@ void setup() {
   clearLCD();
   lastLCDActivity = millis();
 
-  DEBUG_PRINTLN("System ready!");
-  DEBUG_PRINTLN();
+#if DEBUG_MODE
+  Serial.println("System ready!");
+  Serial.println();
+#endif  
 }
 
 // ==========================================
@@ -199,6 +231,9 @@ void loop() {
     handleWebServer();
   }
 
+  // Gérer le data logging (Phase 3.3)
+  handleDataLog();
+  
   // Manage LCD backlight timeout
   manageLCDBacklight();
 
@@ -217,7 +252,9 @@ void loop() {
     // Daily NTP sync
     if (wifiConnected && now.hour() == NTP_SYNC_HOUR && 
         now.minute() == NTP_SYNC_MINUTE && now.second() == 0) {
-      DEBUG_PRINTLN("Daily NTP sync triggered");
+#if DEBUG_MODE
+  Serial.println("Daily NTP sync triggered");
+#endif
       if (syncTimeWithNTP()) {
         lastNTPSync = millis();
         lastNTPSyncSuccess = true;
@@ -225,19 +262,50 @@ void loop() {
     }
 
     // Debug output every 10 seconds
-    if (now.second() % 10 == 0) {
-      DEBUG_PRINT("Time: ");
-      printDateTime(now);
-      DEBUG_PRINT(" | Mode: ");
-      DEBUG_PRINT(currentDisplayMode);
-      DEBUG_PRINT(" | LCD: ");
-      DEBUG_PRINT(lcdBacklightOn ? "ON" : "OFF");
-      DEBUG_PRINT(" | Indoor: ");
-      DEBUG_PRINT(indoorData.temperature, 1);
-      DEBUG_PRINT("°C | Outdoor: ");
-      DEBUG_PRINT(outdoorData.temperature, 1);
-      DEBUG_PRINT("°C | AQI: ");
-      DEBUG_PRINTLN(airQuality.estimatedAQI);
+  static unsigned short lastDebugSecond = 99;
+  if (now.second() % 10 == 0 && now.second() != lastDebugSecond) {
+    lastDebugSecond = now.second();
+    
+#if DEBUG_MODE
+  Serial.println(); // Saut de ligne pour séparer
+  Serial.print("Time: ");
+#endif
+    printDateTime(now);
+#if DEBUG_MODE
+  Serial.println();
+  Serial.print("Mode: ");
+  Serial.print(currentDisplayMode);
+  Serial.print(" | LCD: ");
+  Serial.print(lcdBacklightOn ? "ON" : "OFF");
+  Serial.println();
+  Serial.print("Indoor: ");
+  Serial.print(indoorData.temperature, 1);
+  Serial.print("°C / ");
+  Serial.print(indoorData.humidity, 1);
+  Serial.println("%");
+  Serial.print("Outdoor: ");
+  Serial.print(outdoorData.temperature, 1);
+  Serial.print("°C / ");
+  Serial.print(outdoorData.humidity, 1);
+  Serial.println("%");
+  Serial.print("Air Quality: ");
+  Serial.print(airQuality.estimatedAQI);
+  Serial.print(" (");
+  Serial.print(airQuality.quality);
+  Serial.println(")");
+#endif
+    
+    // Data logging stats
+    DataLogStats stats = getLogStats();
+#if DEBUG_MODE
+  Serial.print("Data: Buffer=");
+  Serial.print(stats.bufferCount);
+  Serial.print("/");
+  Serial.print(MAX_DATA_POINTS);
+  Serial.print(" | MQTT=");
+  Serial.println(stats.mqttConnected ? "CONNECTED" : "DISCONNECTED");
+  Serial.println("---");
+#endif    
     }
   }
 

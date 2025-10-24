@@ -62,6 +62,12 @@ String getSensorDataJSON();
 String getConfigJSON();
 
 /**
+ * @brief Get logging statistics as JSON string
+ * @return JSON string with logging stats
+ */
+String getLogStatsJSON();
+
+/**
  * @brief Parse and save configuration from POST data
  * @param postData POST data string
  * @return true if config saved successfully
