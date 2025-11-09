@@ -1,0 +1,29 @@
+# Arduino build files
+*.elf
+*.hex
+*.bin
+*.map
+build/
+.build/
+
+# Arduino IDE
+.DS_Store
+Thumbs.db
+
+# Secrets (ne JAMAIS committer)
+/firmware/smart-led-clock/secrets.h
+
+# Backup files
+*.bak
+*.old
+*~
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+test/
+temp/
