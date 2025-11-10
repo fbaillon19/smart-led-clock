@@ -284,7 +284,7 @@ void loop() {
   manageLCDBacklight();
 
   // ==========================================
-  // UPDATE CLOCK ON INTERRUPT (when not animating)
+  // UPDATE CLOCK ON INTERRUPT (when not animating and not MQTT process)
   // ==========================================
   // The secondTicked flag is set by hardware interrupt (SQW pin)
   // This provides precise 1Hz timing without polling millis()
