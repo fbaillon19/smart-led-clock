@@ -111,12 +111,6 @@ void createDefaultConfig(ClockConfig* config) {
   // LCD timeout
   config->lcdTimeout = LCD_BACKLIGHT_TIMEOUT;
   
-  // Language
-  config->language = LANGUAGE;
-  
-  // Debug mode
-  config->debugMode = DEBUG_MODE;
-  
   // Moon module (default values - will be updated by initMoon)
   config->nextNewMoonEpoch = 0;
   config->lastMeeusSync = 0;
@@ -171,10 +165,26 @@ void applyConfig(const ClockConfig* config) {
   DEBUG_PRINT("LCD timeout set to: ");
   DEBUG_PRINT(runtimeLcdTimeout / 1000);
   DEBUG_PRINTLN(" seconds");
+
+  // Apply timezone offset
+  runtimeTimezoneOffset = config->timezoneOffset;
+  timeClient.setTimeOffset(runtimeTimezoneOffset * 3600);
+  DEBUG_PRINT("Timezone offset set to: UTC");
+  if (runtimeTimezoneOffset >= 0) DEBUG_PRINT("+");
+  DEBUG_PRINTLN(runtimeTimezoneOffset);
   
-  // Note: NTP settings, language, and debug mode require restart
+  // Apply NTP sync schedule
+  runtimeNtpSyncHour = config->ntpSyncHour;
+  runtimeNtpSyncMinute = config->ntpSyncMinute;
+  DEBUG_PRINT("NTP sync schedule set to: ");
+  if (runtimeNtpSyncHour < 10) DEBUG_PRINT("0");
+  DEBUG_PRINT(runtimeNtpSyncHour);
+  DEBUG_PRINT(":");
+  if (runtimeNtpSyncMinute < 10) DEBUG_PRINT("0");
+  DEBUG_PRINTLN(runtimeNtpSyncMinute);
+  
+  // Note: NTP settings require restart
   DEBUG_PRINTLN("Configuration applied successfully");
-  DEBUG_PRINTLN("Note: NTP, language, and debug settings require restart");
 }
 
 void getCurrentConfig(ClockConfig* config) {

@@ -97,6 +97,11 @@
 #define PIN_MOON_CALIB_LED      12   // LED indicator for calibration
 
 // ==========================================
+// WIFI CONFIGURATION
+// ==========================================
+#define MAX_WIFI_ATTEMPT        300
+
+// ==========================================
 // SENSOR CONFIGURATION
 // ==========================================
 #define DHT_TYPE                DHT22
@@ -255,7 +260,6 @@ extern AirQualityData airQuality;
 extern int lastAirQualityValue;
 
 // WiFi & NTP state
-extern bool wifiConnected;
 extern bool lastNTPSyncSuccess;
 extern unsigned long lastNTPSync;
 
@@ -279,5 +283,8 @@ extern uint8_t runtimeColorMinuteB;
 extern uint8_t runtimeColorSecondR;
 extern uint8_t runtimeColorSecondG;
 extern uint8_t runtimeColorSecondB;
+extern int8_t runtimeTimezoneOffset;
+extern uint8_t runtimeNtpSyncHour;
+extern uint8_t runtimeNtpSyncMinute;
 
 #endif // CONFIG_H

@@ -419,33 +419,6 @@ const char WEBPAGE_CONFIG[] PROGMEM = R"rawliteral(
                 </div>
             </div>
             
-            <!-- Language -->
-            <div class="form-section">
-                <h2>🌐 Langue</h2>
-                
-                <div class="form-group">
-                    <label>Langue d'affichage:</label>
-                    <select id="language">
-                        <option value="0">Français</option>
-                        <option value="1">English</option>
-                    </select>
-                </div>
-            </div>
-            
-            <!-- Debug Mode -->
-            <div class="form-section">
-                <h2>🔧 Mode Debug</h2>
-                
-                <div class="form-group">
-                    <label>Mode debug (Serial):</label>
-                    <select id="debugMode">
-                        <option value="0">Désactivé</option>
-                        <option value="1">Activé</option>
-                    </select>
-                    <small>Nécessite un redémarrage pour prendre effet</small>
-                </div>
-            </div>
-            
             <button type="submit" class="save-btn">💾 Enregistrer la configuration</button>
         </form>
     </div>
@@ -472,8 +445,6 @@ const char WEBPAGE_CONFIG[] PROGMEM = R"rawliteral(
                     document.getElementById('ledBrightness').value = data.led.brightness;
                     
                     document.getElementById('lcdTimeout').value = data.lcdTimeout / 1000;
-                    document.getElementById('language').value = data.language;
-                    document.getElementById('debugMode').value = data.debugMode;
                 })
                 .catch(error => {
                     showMessage('Erreur de chargement de la configuration', 'error');
@@ -507,8 +478,6 @@ const char WEBPAGE_CONFIG[] PROGMEM = R"rawliteral(
                     brightness: parseInt(document.getElementById('ledBrightness').value)
                 },
                 lcdTimeout: parseInt(document.getElementById('lcdTimeout').value) * 1000,
-                language: parseInt(document.getElementById('language').value),
-                debugMode: parseInt(document.getElementById('debugMode').value)
             };
             
             fetch('/api/config', {

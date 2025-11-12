@@ -296,9 +296,7 @@ const char* getConfigJSON() {
           "\"second\":{\"r\":%d,\"g\":%d,\"b\":%d},"
           "\"brightness\":%d"
         "},"
-        "\"lcdTimeout\":%lu,"
-        "\"language\":%d,"
-        "\"debugMode\":%d"
+        "\"lcdTimeout\":%lu"
         "}",
         config.timezoneOffset,
         config.ntpSyncHour,
@@ -307,9 +305,7 @@ const char* getConfigJSON() {
         config.colorMinuteR, config.colorMinuteG, config.colorMinuteB,
         config.colorSecondR, config.colorSecondG, config.colorSecondB,
         config.ledBrightness,
-        config.lcdTimeout,
-        config.language,
-        config.debugMode
+        config.lcdTimeout
     );
     
     return json;
@@ -457,23 +453,12 @@ bool parseAndSaveConfig(const char* postData, size_t length) {
     int lcdTime = extractInt(postData, "lcdTimeout");
     if (lcdTime >= 5000) config.lcdTimeout = lcdTime;
     
-    // Parse language
-    int lang = extractInt(postData, "language");
-    if (lang == 0 || lang == 1) config.language = lang;
-    
-    // Parse debug mode
-    int debug = extractInt(postData, "debugMode");
-    if (debug == 0 || debug == 1) config.debugMode = debug;
-    
     // Save to EEPROM
     bool saved = saveConfig(&config);
     
     if (saved) {
         DEBUG_PRINTLN("Config saved successfully");
         applyConfig(&config);
-        
-        DateTime now = getCurrentTime();
-        updateLEDClock(now);
     }
     
     return saved;

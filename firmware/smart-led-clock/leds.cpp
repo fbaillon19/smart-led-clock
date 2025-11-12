@@ -255,16 +255,18 @@ void stopAnimation() {
   
   clearLCD();
   
+/*
   DateTime now = getCurrentTime();
-  
+*/  
   // Reset tracking to force full update
   lastSecond = 61;
   lastMinute = 61;
   lastHour = 25;
-  
+/*  
   updateLEDClock(now);
   
   if (lcdBacklightOn) {
     updateLCDDisplay(now);
   }
+*/
 }

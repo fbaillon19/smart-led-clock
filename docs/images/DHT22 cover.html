@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abri DHT22 - Schéma de montage</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+        .schema-container {
+            display: flex;
+            gap: 30px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        .schema-box {
+            flex: 1;
+            min-width: 300px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border: 2px solid #667eea;
+        }
+        canvas {
+            display: block;
+            margin: 20px auto;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            background: white;
+        }
+        .dimensions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #2196F3;
+        }
+        .dimensions h3 {
+            margin-top: 0;
+            color: #1976D2;
+        }
+        .dimensions ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .dimensions li {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+        .materials {
+            background: #fff3e0;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #FF9800;
+        }
+        .materials h3 {
+            margin-top: 0;
+            color: #F57C00;
+        }
+        .steps {
+            background: #f1f8e9;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #8BC34A;
+        }
+        .steps h3 {
+            margin-top: 0;
+            color: #558B2F;
+        }
+        .step {
+            margin: 15px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        .step-number {
+            display: inline-block;
+            background: #8BC34A;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        .tips {
+            background: #fce4ec;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #E91E63;
+        }
+        .tips h3 {
+            margin-top: 0;
+            color: #C2185B;
+        }
+        .warning {
+            background: #fff8e1;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border-left: 4px solid #FFC107;
+            margin: 10px 0;
+        }
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌡️ Abri DIY pour Capteur DHT22 Extérieur</h1>
+        <p class="subtitle">Protection simple et efficace contre soleil et pluie</p>
+
+        <div class="schema-container">
+            <div class="schema-box">
+                <h2 style="text-align: center; color: #667eea;">Vue de Face</h2>
+                <canvas id="frontView" width="400" height="500"></canvas>
+            </div>
+            <div class="schema-box">
+                <h2 style="text-align: center; color: #667eea;">Vue en Coupe</h2>
+                <canvas id="sideView" width="400" height="500"></canvas>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: white;"></div>
+                <span>Tube PVC blanc</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #4CAF50;"></div>
+                <span>DHT22</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #2196F3;"></div>
+                <span>Câble</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff6b6b;"></div>
+                <span>Trous de ventilation</span>
+            </div>
+        </div>
+
+        <div class="dimensions">
+            <h3>📏 Dimensions recommandées</h3>
+            <ul>
+                <li><strong>Tube PVC :</strong> Diamètre 60-80mm, longueur 25cm</li>
+                <li><strong>Trous de ventilation :</strong> 12-16 trous de Ø6-8mm</li>
+                <li><strong>Espacement des trous :</strong> répartis uniformément sur 360°</li>
+                <li><strong>Zone de perçage :</strong> sur 15cm de hauteur (milieu du tube)</li>
+                <li><strong>Position DHT22 :</strong> centre du tube (12-13cm du bas)</li>
+                <li><strong>Hauteur d'installation :</strong> 1.5-2m du sol</li>
+            </ul>
+        </div>
+
+        <div class="materials">
+            <h3>🛒 Liste de matériel</h3>
+            <ul>
+                <li>1x Tube PVC blanc Ø60-80mm, longueur 25-30cm</li>
+                <li>1x Bouchon PVC pour le dessus (même diamètre)</li>
+                <li>Foret Ø6-8mm pour perçage des trous</li>
+                <li>2-3 colliers de serrage plastique (rilsan)</li>
+                <li>Support de fixation (équerre, collier de descente...)</li>
+                <li>Silicone transparent (optionnel, pour étanchéité bouchon)</li>
+            </ul>
+        </div>
+
+        <div class="steps">
+            <h3>🔧 Étapes de fabrication</h3>
+            
+            <div class="step">
+                <span class="step-number">1</span>
+                <strong>Découpe du tube</strong><br>
+                Couper le tube PVC à 25cm de longueur. Ébarber les bords avec du papier de verre.
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                <strong>Perçage des trous de ventilation</strong><br>
+                Percer 12-16 trous régulièrement espacés sur la partie centrale (15cm de hauteur). 
+                Laisser 5cm en haut et en bas sans trous.
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                <strong>Nettoyage</strong><br>
+                Retirer tous les copeaux de plastique à l'intérieur du tube.
+            </div>
+
+            <div class="step">
+                <span class="step-number">4</span>
+                <strong>Installation du DHT22</strong><br>
+                Fixer le capteur DHT22 au centre du tube avec des colliers rilsan. 
+                Le capteur doit être horizontal et bien centré. Laisser 2-3cm d'espace autour.
+            </div>
+
+            <div class="step">
+                <span class="step-number">5</span>
+                <strong>Passage du câble</strong><br>
+                Faire sortir le câble par le bas du tube. Ne pas obstruer complètement l'ouverture 
+                pour garder la ventilation naturelle.
+            </div>
+
+            <div class="step">
+                <span class="step-number">6</span>
+                <strong>Fermeture du haut</strong><br>
+                Placer le bouchon PVC sur le dessus. Optionnel : ajouter un point de silicone 
+                pour assurer l'étanchéité (laisser sécher 24h).
+            </div>
+
+            <div class="step">
+                <span class="step-number">7</span>
+                <strong>Montage</strong><br>
+                Fixer le tube verticalement (ou légèrement incliné) à l'aide d'une équerre 
+                ou de colliers sur un mur/poteau. Hauteur : 1.5-2m du sol.
+            </div>
+        </div>
+
+        <div class="tips">
+            <h3>💡 Conseils d'installation</h3>
+            
+            <div class="warning">
+                <strong>⚠️ Emplacement critique :</strong> Installez TOUJOURS à l'ombre ! 
+                Orientation Nord ou sous un avant-toit pour éviter le soleil direct.
+            </div>
+
+            <ul>
+                <li><strong>Distance des murs :</strong> minimum 50cm pour éviter la chaleur emmagasinée</li>
+                <li><strong>Hauteur sol :</strong> 1.5-2m selon normes météorologiques</li>
+                <li><strong>Câble :</strong> utiliser du câble blindé 3 fils si longueur >5m</li>
+                <li><strong>Orientation :</strong> ouverture du bas vers le Nord si possible</li>
+                <li><strong>Entretien :</strong> nettoyer 1x/an (eau + éponge), vérifier que les trous ne sont pas bouchés</li>
+                <li><strong>Test :</strong> comparer avec capteur intérieur pendant 24h pour vérifier la cohérence</li>
+            </ul>
+        </div>
+
+        <div style="background: #e8eaf6; padding: 20px; border-radius: 10px; margin-top: 30px; text-align: center;">
+            <h3 style="color: #3f51b5; margin-top: 0;">🎯 Résultat attendu</h3>
+            <p style="font-size: 16px; line-height: 1.8;">
+                Avec cet abri simple, vous obtiendrez des mesures <strong>précises à ±1°C</strong> près 
+                par rapport à un abri Stevenson professionnel, tout en protégeant efficacement 
+                votre DHT22 des intempéries. <br><br>
+                <strong>Coût total :</strong> 5-10€ · <strong>Temps de fabrication :</strong> 30 minutes
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Vue de face
+        const ctxFront = document.getElementById('frontView').getContext('2d');
+        
+        function drawFrontView() {
+            ctxFront.clearRect(0, 0, 400, 500);
+            
+            // Titre
+            ctxFront.fillStyle = '#333';
+            ctxFront.font = 'bold 16px Arial';
+            ctxFront.fillText('Vue de face (extérieur)', 110, 30);
+            
+            // Tube PVC principal
+            ctxFront.fillStyle = 'white';
+            ctxFront.strokeStyle = '#333';
+            ctxFront.lineWidth = 2;
+            ctxFront.fillRect(150, 80, 100, 350);
+            ctxFront.strokeRect(150, 80, 100, 350);
+            
+            // Bouchon du haut
+            ctxFront.fillStyle = '#f0f0f0';
+            ctxFront.fillRect(145, 70, 110, 15);
+            ctxFront.strokeRect(145, 70, 110, 15);
+            
+            // Petit chapeau
+            ctxFront.beginPath();
+            ctxFront.moveTo(140, 70);
+            ctxFront.lineTo(200, 55);
+            ctxFront.lineTo(260, 70);
+            ctxFront.fillStyle = '#e0e0e0';
+            ctxFront.fill();
+            ctxFront.stroke();
+            
+            // Trous de ventilation (vue de face)
+            ctxFront.fillStyle = '#ff6b6b';
+            const holeRows = 4;
+            const holeCols = 4;
+            for (let row = 0; row < holeRows; row++) {
+                for (let col = 0; col < holeCols; col++) {
+                    const x = 165 + col * 25;
+                    const y = 150 + row * 50;
+                    ctxFront.beginPath();
+                    ctxFront.arc(x, y, 4, 0, Math.PI * 2);
+                    ctxFront.fill();
+                }
+            }
+            
+            // DHT22 (visible à travers les trous)
+            ctxFront.fillStyle = '#4CAF50';
+            ctxFront.fillRect(180, 240, 40, 25);
+            ctxFront.strokeStyle = '#2E7D32';
+            ctxFront.strokeRect(180, 240, 40, 25);
+            
+            // Pins DHT22
+            ctxFront.fillStyle = '#FFD54F';
+            for (let i = 0; i < 4; i++) {
+                ctxFront.fillRect(185 + i * 10, 265, 4, 8);
+            }
+            
+            // Câble sortant par le bas
+            ctxFront.strokeStyle = '#2196F3';
+            ctxFront.lineWidth = 3;
+            ctxFront.beginPath();
+            ctxFront.moveTo(200, 430);
+            ctxFront.lineTo(200, 480);
+            ctxFront.stroke();
+            
+            // Annotations avec flèches
+            ctxFront.fillStyle = '#333';
+            ctxFront.font = '12px Arial';
+            
+            // Annotation bouchon
+            drawArrow(ctxFront, 120, 77, 145, 77);
+            ctxFront.fillText('Bouchon PVC', 20, 82);
+            
+            // Annotation trous
+            drawArrow(ctxFront, 270, 200, 250, 200);
+            ctxFront.fillText('Trous Ø6-8mm', 275, 205);
+            ctxFront.fillText('(12-16 trous)', 275, 220);
+            
+            // Annotation DHT22
+            drawArrow(ctxFront, 270, 252, 220, 252);
+            ctxFront.fillText('DHT22', 275, 257);
+            
+            // Annotation ouverture
+            drawArrow(ctxFront, 120, 430, 150, 430);
+            ctxFront.fillText('Ouvert (ventilation)', 20, 435);
+            
+            // Cotes
+            ctxFront.strokeStyle = '#666';
+            ctxFront.lineWidth = 1;
+            ctxFront.setLineDash([3, 3]);
+            
+            // Cote hauteur totale
+            ctxFront.beginPath();
+            ctxFront.moveTo(270, 80);
+            ctxFront.lineTo(290, 80);
+            ctxFront.moveTo(290, 80);
+            ctxFront.lineTo(290, 430);
+            ctxFront.moveTo(270, 430);
+            ctxFront.lineTo(290, 430);
+            ctxFront.stroke();
+            
+            ctxFront.fillStyle = '#666';
+            ctxFront.font = 'bold 11px Arial';
+            ctxFront.fillText('25cm', 295, 260);
+            
+            ctxFront.setLineDash([]);
+        }
+        
+        // Vue en coupe
+        const ctxSide = document.getElementById('sideView').getContext('2d');
+        
+        function drawSideView() {
+            ctxSide.clearRect(0, 0, 400, 500);
+            
+            // Titre
+            ctxSide.fillStyle = '#333';
+            ctxSide.font = 'bold 16px Arial';
+            ctxSide.fillText('Vue en coupe (intérieur)', 110, 30);
+            
+            // Parois du tube (vue en coupe)
+            ctxSide.fillStyle = '#f5f5f5';
+            ctxSide.strokeStyle = '#333';
+            ctxSide.lineWidth = 2;
+            
+            // Paroi gauche
+            ctxSide.fillRect(130, 80, 15, 350);
+            ctxSide.strokeRect(130, 80, 15, 350);
+            
+            // Paroi droite
+            ctxSide.fillRect(255, 80, 15, 350);
+            ctxSide.strokeRect(255, 80, 15, 350);
+            
+            // Bouchon du haut (en coupe)
+            ctxSide.fillStyle = '#e0e0e0';
+            ctxSide.fillRect(125, 65, 150, 15);
+            ctxSide.strokeRect(125, 65, 150, 15);
+            
+            // Joint silicone (optionnel)
+            ctxSide.fillStyle = '#FFB74D';
+            ctxSide.fillRect(130, 78, 140, 3);
+            
+            // Trous de ventilation (vue en coupe)
+            ctxSide.fillStyle = '#ff6b6b';
+            const holePositions = [150, 200, 250, 300, 350];
+            holePositions.forEach(y => {
+                // Trou gauche
+                ctxSide.beginPath();
+                ctxSide.arc(137, y, 4, 0, Math.PI * 2);
+                ctxSide.fill();
+                
+                // Trou droite
+                ctxSide.beginPath();
+                ctxSide.arc(263, y, 4, 0, Math.PI * 2);
+                ctxSide.fill();
+            });
+            
+            // DHT22 au centre
+            ctxSide.fillStyle = '#4CAF50';
+            ctxSide.fillRect(175, 240, 50, 30);
+            ctxSide.strokeStyle = '#2E7D32';
+            ctxSide.lineWidth = 2;
+            ctxSide.strokeRect(175, 240, 50, 30);
+            
+            // Grille du capteur
+            ctxSide.strokeStyle = '#1B5E20';
+            ctxSide.lineWidth = 1;
+            for (let i = 0; i < 5; i++) {
+                ctxSide.beginPath();
+                ctxSide.moveTo(180 + i * 10, 245);
+                ctxSide.lineTo(180 + i * 10, 265);
+                ctxSide.stroke();
+            }
+            
+            // Support du DHT22 (collier rilsan)
+            ctxSide.strokeStyle = '#757575';
+            ctxSide.lineWidth = 2;
+            ctxSide.setLineDash([2, 2]);
+            ctxSide.beginPath();
+            ctxSide.moveTo(150, 255);
+            ctxSide.lineTo(175, 255);
+            ctxSide.stroke();
+            ctxSide.beginPath();
+            ctxSide.moveTo(225, 255);
+            ctxSide.lineTo(250, 255);
+            ctxSide.stroke();
+            ctxSide.setLineDash([]);
+            
+            // Câble
+            ctxSide.strokeStyle = '#2196F3';
+            ctxSide.lineWidth = 3;
+            ctxSide.beginPath();
+            ctxSide.moveTo(200, 270);
+            ctxSide.lineTo(200, 430);
+            ctxSide.lineTo(200, 480);
+            ctxSide.stroke();
+            
+            // Flèches de circulation d'air
+            ctxSide.strokeStyle = '#00BCD4';
+            ctxSide.fillStyle = '#00BCD4';
+            ctxSide.lineWidth = 2;
+            
+            // Air entrant par les trous
+            drawCurvedArrow(ctxSide, 110, 200, 145, 220);
+            drawCurvedArrow(ctxSide, 290, 200, 255, 220);
+            
+            // Air sortant par le bas
+            drawCurvedArrow(ctxSide, 180, 400, 180, 435);
+            drawCurvedArrow(ctxSide, 220, 400, 220, 435);
+            
+            // Annotations
+            ctxSide.fillStyle = '#333';
+            ctxSide.font = '11px Arial';
+            
+            // Légende flux d'air
+            ctxSide.fillStyle = '#00BCD4';
+            ctxSide.font = 'bold 12px Arial';
+            ctxSide.fillText('→ Flux d\'air', 50, 320);
+            
+            // Annotation espace autour du capteur
+            ctxSide.strokeStyle = '#FF9800';
+            ctxSide.lineWidth = 1;
+            ctxSide.setLineDash([2, 2]);
+            ctxSide.strokeRect(165, 230, 70, 50);
+            ctxSide.setLineDash([]);
+            
+            ctxSide.fillStyle = '#FF9800';
+            ctxSide.font = '10px Arial';
+            ctxSide.fillText('Espace 2-3cm', 167, 225);
+            
+            // Cotes
+            ctxSide.strokeStyle = '#666';
+            ctxSide.lineWidth = 1;
+            ctxSide.setLineDash([3, 3]);
+            
+            // Cote diamètre
+            ctxSide.beginPath();
+            ctxSide.moveTo(130, 450);
+            ctxSide.lineTo(130, 470);
+            ctxSide.moveTo(130, 460);
+            ctxSide.lineTo(270, 460);
+            ctxSide.moveTo(270, 450);
+            ctxSide.lineTo(270, 470);
+            ctxSide.stroke();
+            
+            ctxSide.fillStyle = '#666';
+            ctxSide.font = 'bold 11px Arial';
+            ctxSide.fillText('Ø 60-80mm', 175, 475);
+            
+            ctxSide.setLineDash([]);
+        }
+        
+        // Fonction helper pour dessiner des flèches
+        function drawArrow(ctx, fromX, fromY, toX, toY) {
+            const headlen = 8;
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // Fonction pour dessiner des flèches courbées
+        function drawCurvedArrow(ctx, fromX, fromY, toX, toY) {
+            const headlen = 8;
+            
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.quadraticCurveTo((fromX + toX) / 2, (fromY + toY) / 2 + 10, toX, toY);
+            ctx.stroke();
+            
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // Dessiner les schémas
+        drawFrontView();
+        drawSideView();
+    </script>
+</body>
+</html>

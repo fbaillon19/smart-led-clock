@@ -78,7 +78,7 @@ void initDataLog(WiFiClient& wifiClient) {
   DEBUG_PRINT(sizeof(dataBuffer) / 1024);
   DEBUG_PRINTLN(" KB)");
   
-  if (wifiConnected) {
+  if (wifiConnected()) {
     DEBUG_PRINTLN("MQTT will connect in background...");
     lastMQTTAttempt = 0;  // Sera à 0, donc première tentative dans 30s
   } else {
@@ -95,7 +95,7 @@ void handleDataLog() {
   static unsigned long lastDebugLog = 0;
   if (currentMillis - lastDebugLog >= 10000) {
     DEBUG_PRINT("handleDataLog: wifiConnected=");
-    DEBUG_PRINT(wifiConnected);
+    DEBUG_PRINT(wifiConnected());
     DEBUG_PRINT(" | mqttConnected=");
     DEBUG_PRINT(mqttClient.connected());
     DEBUG_PRINT(" | lastAttempt=");
@@ -107,7 +107,7 @@ void handleDataLog() {
   // =================
   
   // Handle MQTT connection
-  if (wifiConnected) {
+  if (wifiConnected()) {
     // Reconnect MQTT if disconnected
     if (!mqttClient.connected()) {
       logStats.mqttConnected = false;
@@ -174,7 +174,7 @@ void handleDataLog() {
   }
   
   // Determine logging interval based on WiFi status
-  unsigned long logInterval = wifiConnected ? 
+  unsigned long logInterval = wifiConnected() ? 
                               DATALOG_INTERVAL_WIFI_OK : 
                               DATALOG_INTERVAL_WIFI_DOWN;
   
@@ -195,7 +195,7 @@ bool logDataPoint() {
   DateTime now = getCurrentTime();
   
   // If WiFi OK and MQTT connected, send directly without buffering
-  if (wifiConnected && mqttClient.connected()) {
+  if (wifiConnected() && mqttClient.connected()) {
     bool sent = sendMQTTData();
     
     if (sent) {

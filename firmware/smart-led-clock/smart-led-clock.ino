@@ -41,13 +41,13 @@
 #include "config.h"
 #include "strings.h"
 #include "leds.h"
-#include "sensors.h"
+#include "display.h"
 #include "button.h"
 #include "rtc.h"
-#include "display.h"
-#include "webserver.h"
-#include "storage.h"
+#include "sensors.h"
 #include "datalog.h"
+#include "storage.h"
+#include "webserver.h"
 #include "moon.h"
 
 
@@ -65,6 +65,9 @@ unsigned short lastSecond = 61;
 unsigned short lastMinute = 61;
 unsigned short lastHour = 25;
 
+// Wifi attempt to connect
+int wifiAttempt = 0;
+
 // RTC Interrupt flag (set by ISR in rtc.cpp)
 volatile bool secondTicked = false;
 
@@ -80,7 +83,6 @@ SensorData outdoorData = {0, 0, 0, 0, 0, false, 0};
 AirQualityData airQuality = {0, 0, "Unknown", false, 0};
 
 int lastAirQualityValue = -1;
-bool wifiConnected = false;
 
 DisplayMode currentDisplayMode = MODE_TEMP_HUMIDITY;
 bool lcdBacklightOn = true;
@@ -98,6 +100,11 @@ uint8_t runtimeColorMinuteB = COLOR_MINUTE_B;
 uint8_t runtimeColorSecondR = COLOR_SECOND_R;
 uint8_t runtimeColorSecondG = COLOR_SECOND_G;
 uint8_t runtimeColorSecondB = COLOR_SECOND_B;
+// Runtime NTP & timezone configuration
+int8_t runtimeTimezoneOffset = TIME_ZONE_OFFSET;
+uint8_t runtimeNtpSyncHour = NTP_SYNC_HOUR;
+uint8_t runtimeNtpSyncMinute = NTP_SYNC_MINUTE;
+
 
 // ==========================================
 // SETUP
@@ -172,9 +179,8 @@ void setup() {
   // Connect to WiFi
   displayStartupMessage(STR_CONNECTING_WIFI);
   if (connectWiFi()) {
-    wifiConnected = true;
 #if DEBUG_MODE
-  Serial.println("WiFi connected");
+    Serial.println("WiFi connected");
 #endif
     displayStartupMessage(STR_WIFI_CONNECTED);
     delay(1000);
@@ -214,6 +220,7 @@ void setup() {
   Serial.println("WiFi failed");
 #endif
     displayStartupMessage(STR_NO_WIFI);
+    wifiAttempt = 0;      
   }
   delay(2000);
 
@@ -258,7 +265,7 @@ void loop() {
   if (millis() - lastMemCheck >= 30000) {
     lastMemCheck = millis();
     
-    #if DEBUG_MODE
+#if DEBUG_MODE
     // Arduino R4 WiFi - Estimation mémoire via stack pointer
     char top;
     Serial.print("[MEM] Stack pointer: ");
@@ -266,19 +273,41 @@ void loop() {
     Serial.print(" | Uptime: ");
     Serial.print(millis() / 1000);
     Serial.println("s");
-    #endif
+
+    Wire.beginTransmission(0x68);  // Adresse DS3231
+    byte error = Wire.endTransmission();
+  
+    if (error != 0) {
+      DEBUG_PRINT("[I2C] DS3231 error code: ");
+      DEBUG_PRINTLN(error);
+      // error = 2 : NACK on address (device not found)
+      // error = 4 : other error
+    }
+#endif
   }
 
   // Process button input
   updateButton();
 
   // Gérer les requêtes web
-  if (wifiConnected) {
+  if (wifiConnected()) {
     handleWebServer();
+    wifiAttempt = 0;
+  }
+  else {
+    // Connect to WiFi
+    if (++wifiAttempt >= MAX_WIFI_ATTEMPT) {
+      WiFi.begin(ssid, pass);
+      if (wifiConnected()) {
+        Serial.println("WiFi connected");
+        delay(100);
+      }
+      wifiAttempt = 0;
+    }
   }
 
   // Gérer le data logging
-  handleDataLog();
+//  handleDataLog();
   
   // Manage LCD backlight timeout
   manageLCDBacklight();
@@ -336,8 +365,8 @@ void loop() {
     }
 
     // Daily NTP sync
-    if (wifiConnected && now.hour() == NTP_SYNC_HOUR && 
-        now.minute() == NTP_SYNC_MINUTE && now.second() == 0) {
+    if (wifiConnected() && now.hour() == runtimeNtpSyncHour && 
+        now.minute() == runtimeNtpSyncMinute && now.second() == 0) {
 #if DEBUG_MODE
       Serial.println("Daily NTP sync triggered");
 #endif

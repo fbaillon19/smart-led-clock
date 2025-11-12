@@ -25,6 +25,7 @@
 #include "config.h"
 #include "secrets.h"
 #include "leds.h"
+#include "rtc.h"
 
 // ==========================================
 // CONFIGURATION STRUCTURE
@@ -34,7 +35,7 @@
  * @struct ClockConfig
  * @brief Configuration parameters stored in EEPROM
  * 
- * Total size: ~180 bytes (out of 8192 available)
+ * Total size: ~165 bytes (out of 8192 available)
  */
 struct ClockConfig {
   // Magic number to validate EEPROM data
@@ -65,12 +66,6 @@ struct ClockConfig {
   
   // LCD settings
   uint32_t lcdTimeout;         // Backlight timeout in milliseconds
-  
-  // Language
-  uint8_t language;            // LANG_FR or LANG_EN
-  
-  // Debug mode
-  uint8_t debugMode;           // 0 or 1
   
   // Moon phase tracking (Meeus hybrid approach)
   unsigned long nextNewMoonEpoch;   // Next new moon timestamp (Meeus calculated)

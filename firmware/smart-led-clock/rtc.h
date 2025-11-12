@@ -164,4 +164,11 @@ void printDateTime(DateTime dt);
  */
 DateTime getCurrentTime();
 
+/**
+ * @brief Get current wifi status
+ * 
+ * @return true if wifi is up, false if not
+ */
+bool wifiConnected();
+
 #endif // RTC_H

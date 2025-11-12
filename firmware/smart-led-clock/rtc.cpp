@@ -109,7 +109,7 @@ bool connectWiFi() {
   int attempts = 0;
   WiFi.begin(ssid, pass);
   
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+  while (wifiConnected() && attempts < 20) {
     delay(500);
     DEBUG_PRINT(".");
     attempts++;
@@ -188,4 +188,13 @@ void printDateTime(DateTime dt) {
  */
 DateTime getCurrentTime() {
   return rtc.now();
+}
+
+/**
+ * @brief Get current wifi status
+ * 
+ * @return true if wifi is up, false if not
+ */
+bool wifiConnected() {
+  return WiFi.status() == WL_CONNECTED;
 }
