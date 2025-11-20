@@ -13,8 +13,8 @@
  * - DateTime formatting utilities
  * 
  * @author F. Baillon
- * @version 1.0.0
- * @date January 2025
+ * @version 1.1.0
+ * @date November 2025
  * @license MIT License
  * 
  * Copyright (c) 2025 F. Baillon
@@ -33,12 +33,15 @@
 #ifndef RTC_H
 #define RTC_H
 
+#include <Arduino.h>
 #include <RTClib.h>
 #include <WiFiS3.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
 #include <LiquidCrystal_I2C.h>
 #include "config.h"
+#include "secrets.h"
+
 
 // ==========================================
 // RTC & NTP OBJECTS
@@ -46,6 +49,8 @@
 extern RTC_DS3231 rtc;           ///< DS3231 Real-Time Clock object
 extern WiFiUDP udp;              ///< UDP client for NTP communication
 extern NTPClient timeClient;     ///< NTP client (pool.ntp.org)
+
+extern int wifiAttempts;            /// 
 
 // ==========================================
 // FUNCTION DECLARATIONS
@@ -91,7 +96,7 @@ bool initRTC();
 void onSecondTick();
 
 /**
- * @brief Connect to WiFi network
+ * @brief Initialize WiFi network
  * 
  * Attempts to connect to WiFi using credentials from secrets.h.
  * Tries up to 20 times (10 seconds total) with 500ms delays.
@@ -106,7 +111,21 @@ void onSecondTick();
  * @note Connection status and IP address printed to Serial
  * @see secrets.h, secrets.template.h
  */
-bool connectWiFi();
+bool initWiFi();
+
+/**
+ * @brief Connect to WiFi network
+ * 
+ * Attempts to connect to WiFi using credentials from secrets.h
+ * in case of Wifi connection loss
+ * 
+ * WiFi credentials must be defined in secrets.h:
+ * - const char* ssid = "YourSSID";
+ * - const char* pass = "YourPassword";
+ * 
+ * @see secrets.h, secrets.template.h
+ */
+void connectWifi();
 
 /**
  * @brief Synchronize RTC time with NTP server
@@ -126,7 +145,7 @@ bool connectWiFi();
  * 
  * @note Requires active WiFi connection
  * @note Time accuracy: typically ±50ms
- * @see connectWiFi(), TIME_ZONE_OFFSET
+ * @see initWiFi(), connectWifi, TIME_ZONE_OFFSET
  */
 bool syncTimeWithNTP();
 

@@ -3,8 +3,8 @@
  * @brief Web server implementation - OPTIMIZED (No String leaks)
  * 
  * @author F. Baillon
- * @version 1.2.0
- * @date January 2025
+ * @version 1.1.0
+ * @date November 2025
  * @license MIT License
  */
 
@@ -20,7 +20,7 @@ WiFiServer webServer(80);
 // ==========================================
 
 /**
- * @brief Extract integer value from buffer (replaces String parsing)
+ * @brief Extract integer value from buffer
  */
 static int extractInt(const char* data, const char* key) {
     char searchStr[64];
@@ -67,12 +67,24 @@ static bool extractRGB(const char* data, const char* colorKey, int& r, int& g, i
 // MAIN HANDLER
 // ==========================================
 
+/**
+ * @brief Initialize web server
+ * 
+ * Starts the web server on port 80.
+ * Call this after WiFi is connected.
+ */
 void initWebServer() {
     webServer.begin();
     DEBUG_PRINTLN("Web server started on port 80");
 }
 
-void handleWebServer() {
+/**
+ * @brief Handle incoming web requests
+ * 
+ * Call this in main loop() to process HTTP requests.
+ * Non-blocking - returns immediately if no client.
+ */
+ void handleWebServer() {
     WiFiClient client = webServer.available();
     
     if (!client) {
@@ -82,9 +94,9 @@ void handleWebServer() {
     unsigned long startTime = millis();
     DEBUG_PRINTLN("New web client connected");
     
-    // ✅ Reduced buffer sizes (was 1024+512 = 1.5KB, now 768+256 = 1KB)
-    static char request[768];   // Reduced from 1024
-    static char postData[256];  // Reduced from 512
+    // ✅ Reduced buffer sizes (768+256 = 1KB)
+    static char request[768];
+    static char postData[256];
     int requestLen = 0;
     int postDataLen = 0;
     bool isPost = false;
@@ -242,8 +254,17 @@ void handleWebServer() {
 // JSON GENERATION FUNCTIONS (NO STRING)
 // ==========================================
 
+/**
+ * @brief Get sensor data as JSON string
+ * 
+ * Formats current sensor readings into JSON format.
+ * 
+ * ⚠️ Returns pointer to static buffer - valid until next call
+ * 
+ * @return Pointer to static JSON buffer
+ */
 const char* getSensorDataJSON() {
-    static char json[384];  // Reduced from 512
+    static char json[384];
     
     DateTime now = getCurrentTime();
     
@@ -279,8 +300,15 @@ const char* getSensorDataJSON() {
     return json;
 }
 
+/**
+ * @brief Get configuration as JSON string
+ * 
+ * ⚠️ Returns pointer to static buffer - valid until next call
+ * 
+ * @return Pointer to static JSON buffer
+ */
 const char* getConfigJSON() {
-    static char json[384];  // Reduced from 512
+    static char json[384];
     
     ClockConfig config;
     getCurrentConfig(&config);
@@ -311,6 +339,13 @@ const char* getConfigJSON() {
     return json;
 }
 
+/**
+ * @brief Get logging statistics as JSON string
+ * 
+ * ⚠️ Returns pointer to static buffer - valid until next call
+ * 
+ * @return Pointer to static JSON buffer
+ */
 const char* getLogStatsJSON() {
     static char json[256];
     
@@ -340,8 +375,18 @@ const char* getLogStatsJSON() {
     return json;
 }
 
+/**
+ * @brief Get moon phase data as JSON string
+ * 
+ * Formats moon phase data into JSON format based on action parameter.
+ * 
+ * ⚠️ Returns pointer to static buffer - valid until next call
+ * 
+ * @param action Action to perform ("status" or "recalibrate")
+ * @return Pointer to static JSON buffer
+ */
 const char* getMoonDataJSON(const char* action) {
-    static char json[384];  // Reduced from 512
+    static char json[384];
     
     if (strcmp(action, "status") == 0) {
         MoonPhaseData& data = getMoonData();
@@ -409,6 +454,12 @@ const char* getMoonDataJSON(const char* action) {
     return json;
 }
 
+/**
+ * @brief Parse and save configuration from POST data
+ * @param postData POST data buffer (null-terminated)
+ * @param length Length of POST data
+ * @return true if config saved successfully
+ */
 bool parseAndSaveConfig(const char* postData, size_t length) {
     DEBUG_PRINTLN("Parsing config from POST data...");
     
@@ -464,6 +515,9 @@ bool parseAndSaveConfig(const char* postData, size_t length) {
     return saved;
 }
 
+/**
+ * @brief Send page content in chunks (internal helper)
+ */
 void sendPageInChunks(WiFiClient& client, const char* content) {
     const size_t CHUNK_SIZE = 512;
     char buffer[CHUNK_SIZE + 1];

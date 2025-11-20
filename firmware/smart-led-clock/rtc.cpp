@@ -3,16 +3,15 @@
  * @brief RTC, WiFi, and NTP management implementation
  * 
  * @author F. Baillon
- * @version 1.0.0
- * @date January 2025
+ * @version 1.1.0
+ * @date November 2025
  * @license MIT License
  * 
  * Copyright (c) 2025 F. Baillon
  */
 
 #include "rtc.h"
-#include "secrets.h"
-#include <Arduino.h>
+
 
 // ==========================================
 // GLOBAL RTC & NTP OBJECTS
@@ -94,14 +93,14 @@ bool initRTC() {
 }
 
 /**
- * @brief Connect to WiFi network
+ * @brief Initialize WiFi network
  * 
  * Attempts to connect to WiFi using credentials from secrets.h.
  * Tries up to 20 times (10 seconds total) before giving up.
  * 
  * @return true if connected successfully, false if connection failed
  */
-bool connectWiFi() {
+bool initWiFi() {
 
   DEBUG_PRINT("Connecting to WiFi: ");
   DEBUG_PRINTLN(ssid);
@@ -125,6 +124,28 @@ bool connectWiFi() {
   
   DEBUG_PRINTLN("WiFi connection failed");
   return false;
+}
+
+/**
+ * @brief Connect to WiFi network
+ * 
+ * Attempts to connect to WiFi using credentials from secrets.h
+ * in case of Wifi connection loss
+ * Try every 3 seconds
+ * 
+ */
+void connectWifi() {
+
+  if (wifiAttempts++ == 0) {
+    DEBUG_PRINT("Connecting to WiFi: ");
+    DEBUG_PRINTLN(ssid);
+
+    WiFi.begin(ssid, pass);
+  }
+  
+  if (wifiAttempts >= MAX_WIFI_ATTEMPTS) {
+    wifiAttempts = 0;     // After 3 seconds, still not connected, let's try again
+  }
 }
 
 /**

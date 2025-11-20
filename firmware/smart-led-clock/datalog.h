@@ -10,8 +10,8 @@
  * Memory usage: ~8 KB RAM for 576 data points (48h at 5min interval)
  * 
  * @author F. Baillon
- * @version 1.0.0
- * @date January 2025
+ * @version 1.1.0
+ * @date November 2025
  * @license MIT License
  * 
  * Copyright (c) 2025 F. Baillon
@@ -47,9 +47,6 @@
 /**
  * MQTT configuration
  */
-#define MQTT_SERVER                 "192.168.1.21"  ///< MQTT broker IP
-#define MQTT_PORT                   1883            ///< MQTT port
-#define MQTT_CLIENT_ID              "smart-led-clock"
 #define MQTT_TOPIC_DATA             "home/clock/sensors"
 #define MQTT_TOPIC_BUFFER           "home/clock/buffer"
 #define MQTT_TOPIC_STATUS           "home/clock/status"

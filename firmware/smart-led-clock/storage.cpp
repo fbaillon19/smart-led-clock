@@ -4,7 +4,7 @@
  * 
  * @author F. Baillon
  * @version 1.1.0
- * @date January 2025
+ * @date November 2025
  * @license MIT License
  */
 
@@ -15,6 +15,12 @@
 // FUNCTION IMPLEMENTATIONS
 // ==========================================
 
+/**
+ * @brief Initialize storage system
+ * 
+ * Loads configuration from EEPROM or creates default config
+ * if EEPROM is empty or corrupted.
+ */
 void initStorage() {
   DEBUG_PRINTLN("Initializing EEPROM storage...");
   
@@ -31,6 +37,12 @@ void initStorage() {
   }
 }
 
+/**
+ * @brief Load configuration from EEPROM
+ * 
+ * @param config Pointer to config structure to fill
+ * @return true if valid config loaded, false if using defaults
+ */
 bool loadConfig(ClockConfig* config) {
   // Read config from EEPROM
   EEPROM.get(EEPROM_CONFIG_ADDR, *config);
@@ -57,6 +69,15 @@ bool loadConfig(ClockConfig* config) {
   return true;
 }
 
+/**
+ * @brief Save configuration to EEPROM
+ * 
+ * Only writes if configuration has changed (wear-leveling).
+ * Updates checksum before writing.
+ * 
+ * @param config Pointer to config structure to save
+ * @return true if saved successfully, false if unchanged or error
+ */
 bool saveConfig(const ClockConfig* config) {
   // Read existing config
   ClockConfig existingConfig;
@@ -80,6 +101,11 @@ bool saveConfig(const ClockConfig* config) {
   return true;
 }
 
+/**
+ * @brief Create default configuration
+ * 
+ * @param config Pointer to config structure to fill with defaults
+ */
 void createDefaultConfig(ClockConfig* config) {
   config->magic = CONFIG_MAGIC;
   
@@ -122,6 +148,14 @@ void createDefaultConfig(ClockConfig* config) {
   DEBUG_PRINTLN("Default config created");
 }
 
+/**
+ * @brief Calculate checksum for config structure
+ * 
+ * Simple checksum: sum of all bytes except checksum field.
+ * 
+ * @param config Pointer to config structure
+ * @return Calculated checksum value
+ */
 uint16_t calculateChecksum(const ClockConfig* config) {
   uint16_t sum = 0;
   const uint8_t* data = (const uint8_t*)config;
@@ -134,6 +168,14 @@ uint16_t calculateChecksum(const ClockConfig* config) {
   return sum;
 }
 
+/**
+ * @brief Apply configuration to running system
+ * 
+ * Updates all system parameters from config structure.
+ * Call this after loading config from EEPROM.
+ * 
+ * @param config Pointer to config to apply
+ */
 void applyConfig(const ClockConfig* config) {
   DEBUG_PRINTLN("Applying configuration...");
   
@@ -187,13 +229,17 @@ void applyConfig(const ClockConfig* config) {
   DEBUG_PRINTLN("Configuration applied successfully");
 }
 
+/**
+ * @brief Get current running configuration
+ * 
+ * Fills config structure with current system values.
+ * 
+ * @param config Pointer to config structure to fill
+ */
 void getCurrentConfig(ClockConfig* config) {
   // Fill config with current runtime values
   // For now, we'll load from EEPROM as baseline
   if (!loadConfig(config)) {
     createDefaultConfig(config);
   }
-  
-  // Override with any runtime changes
-  // (we'll implement this as we make settings changeable at runtime)
 }

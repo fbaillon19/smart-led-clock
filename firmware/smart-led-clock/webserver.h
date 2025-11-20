@@ -11,7 +11,7 @@
  * 
  * @author F. Baillon
  * @version 1.1.0
- * @date January 2025
+ * @date November 2025
  * @license MIT License
  */
 

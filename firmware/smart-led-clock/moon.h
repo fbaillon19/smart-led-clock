@@ -20,8 +20,8 @@
  * - 3D printed bicolor sphere with calibration disk
  * 
  * @author F. Baillon
- * @version 1.0.0
- * @date January 2025
+ * @version 1.1.0
+ * @date November 2025
  * @license MIT License
  */
 
@@ -237,18 +237,6 @@ unsigned long calculateNextNewMoonMeeus(unsigned long currentEpoch);
 double calculateMeeusNewMoon(int year, int month);
 
 /**
- * @brief Initialize or update next new moon reference
- * 
- * Uses Meeus algorithm to calculate precise next new moon,
- * then uses average cycle (29.53 days) for subsequent updates.
- * Automatically resyncs with Meeus at end of each lunar cycle.
- * 
- * @param currentEpoch Current Unix timestamp
- * @return true if Meeus calculation was performed, false if using cached value
- */
-bool updateNextNewMoon(unsigned long currentEpoch);
-
-/**
  * @brief Check if new moon has passed and resync with Meeus
  * 
  * When current time exceeds nextNewMoonEpoch:
@@ -317,18 +305,6 @@ MoonPhaseData& getMoonData();
  * @return Reference to MoonCalibrationResult structure
  */
 MoonCalibrationResult& getLastCalibrationResult();
-
-/**
- * @brief Print detailed moon information to serial
- * @param currentEpoch Current Unix timestamp
- */
-void printMoonInfo(unsigned long currentEpoch);
-
-/**
- * @brief Check if moon module is calibrated
- * @return true if calibrated
- */
-bool isMoonCalibrated();
 
 /**
  * @brief Get days since last calibration

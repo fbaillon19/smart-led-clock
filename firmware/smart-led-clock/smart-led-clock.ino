@@ -17,8 +17,8 @@
  * - motor
  * 
  * @author F. Baillon
- * @version 1.0.0
- * @date January 2025
+ * @version 1.1.0
+ * @date November 2025
  * @license MIT License
  * 
  * Copyright (c) 2025 F. Baillon
@@ -65,8 +65,8 @@ unsigned short lastSecond = 61;
 unsigned short lastMinute = 61;
 unsigned short lastHour = 25;
 
-// Wifi attempt to connect
-int wifiAttempt = 0;
+// Wifi attempt to reconnect
+int wifiAttempts = 0;
 
 // RTC Interrupt flag (set by ISR in rtc.cpp)
 volatile bool secondTicked = false;
@@ -178,7 +178,7 @@ void setup() {
 
   // Connect to WiFi
   displayStartupMessage(STR_CONNECTING_WIFI);
-  if (connectWiFi()) {
+  if (initWiFi()) {
 #if DEBUG_MODE
     Serial.println("WiFi connected");
 #endif
@@ -200,16 +200,20 @@ void setup() {
     }
 
     // Initialize web server
-    displayStartupMessage(STR_INIT_WEB_SERVER);
-    initWebServer();
-    delay(1000);
+    if (WEB_SERVER_ENABLED) {
+      displayStartupMessage(STR_INIT_WEB_SERVER);
+      initWebServer();
+      delay(1000);
+    }
 
     // Initialize data logging
-    initDataLog(mqttWifiClient);
+    if (MQTT_ENABLED) {
+      initDataLog(mqttWifiClient);
 #if DEBUG_MODE
-  Serial.println("Data logging initialized");
+      Serial.println("Data logging initialized");
 #endif
-    delay(1000);
+      delay(1000);
+    }
 
     // Initialize EEPROM storage
     displayStartupMessage(STR_LOAD_CONFIG);
@@ -220,7 +224,7 @@ void setup() {
   Serial.println("WiFi failed");
 #endif
     displayStartupMessage(STR_NO_WIFI);
-    wifiAttempt = 0;      
+    wifiAttempts = 0;      
   }
   delay(2000);
 
@@ -260,12 +264,12 @@ void loop() {
   static unsigned long lastAnimationUpdate = 0;
   static DateTime now;
 
+#if DEBUG_MODE
   // Dans loop(), toutes les 30 secondes
   static unsigned long lastMemCheck = 0;
   if (millis() - lastMemCheck >= 30000) {
     lastMemCheck = millis();
     
-#if DEBUG_MODE
     // Arduino R4 WiFi - Estimation mémoire via stack pointer
     char top;
     Serial.print("[MEM] Stack pointer: ");
@@ -273,54 +277,46 @@ void loop() {
     Serial.print(" | Uptime: ");
     Serial.print(millis() / 1000);
     Serial.println("s");
-
-    Wire.beginTransmission(0x68);  // Adresse DS3231
-    byte error = Wire.endTransmission();
-  
-    if (error != 0) {
-      DEBUG_PRINT("[I2C] DS3231 error code: ");
-      DEBUG_PRINTLN(error);
-      // error = 2 : NACK on address (device not found)
-      // error = 4 : other error
-    }
 #endif
   }
 
   // Process button input
+  // ====================
   updateButton();
 
-  // Gérer les requêtes web
+  // Check that wifi connection up
   if (wifiConnected()) {
-    handleWebServer();
-    wifiAttempt = 0;
+#if DEBUG_MODE
+    if (wifiAttempts > 0) {
+      Serial.println("WiFi connected");
+    }
+#endif    
+    // Manage webserver requests
+    // =========================
+    if (WEB_SERVER_ENABLED)   handleWebServer();
+
+    // Manage data logging
+    // ===================
+    if (MQTT_ENABLED)   handleDataLog();  
+
+    wifiAttempts = 0;
   }
   else {
-    // Connect to WiFi
-    if (++wifiAttempt >= MAX_WIFI_ATTEMPT) {
-      WiFi.begin(ssid, pass);
-      if (wifiConnected()) {
-        Serial.println("WiFi connected");
-        delay(100);
-      }
-      wifiAttempt = 0;
-    }
+    // Try connecting to WiFi
+    connectWifi();
   }
-
-  // Gérer le data logging
-//  handleDataLog();
   
   // Manage LCD backlight timeout
+  // ============================
   manageLCDBacklight();
 
-  // ==========================================
   // UPDATE CLOCK ON INTERRUPT (when not animating and not MQTT process)
-  // ==========================================
   // The secondTicked flag is set by hardware interrupt (SQW pin)
-  // This provides precise 1Hz timing without polling millis()
+  // ===================================================================
   if (secondTicked && !isAnimationActive && !mqttBusy) {
     secondTicked = false;  // Reset flag immediately
     
-    // Get current time from RTC (protected - not during MQTT)
+    // Get current time from RTC
     now = getCurrentTime();
 
 #if DEBUG_MODE
@@ -345,14 +341,15 @@ void loop() {
 #endif
 
     // Update LED clock display
+    // ========================
     updateLEDClock(now);
     
     // Update LCD display (when backlight is on)
-    if (lcdBacklightOn) {
-      updateLCDDisplay(now);
-    }
+    // =========================================
+    if (lcdBacklightOn)   updateLCDDisplay(now);
 
     // Update sensors every 5 seconds
+    // ==============================
     if (++countSensorUpdate > SENSOR_UPDATE) {
       countSensorUpdate = 0;
       updateSensorData();
@@ -360,117 +357,81 @@ void loop() {
     }
     
     // Check for hour change to trigger animation
-    if (now.minute() == 0 && now.second() == 0 && !isAnimationActive) {
-      startAnimation();
-    }
+    // ==========================================
+    if (now.minute() == 0 && now.second() == 0)   startAnimation();
 
-    // Daily NTP sync
-    if (wifiConnected() && now.hour() == runtimeNtpSyncHour && 
+    // Monthly NTP sync, every 2 days at runtime NTP synchronisation
+    // =============================================================
+    if (wifiConnected() && now.day() % 2 && now.hour() == runtimeNtpSyncHour && 
         now.minute() == runtimeNtpSyncMinute && now.second() == 0) {
 #if DEBUG_MODE
-      Serial.println("Daily NTP sync triggered");
+      Serial.println("Monthly NTP sync triggered");
 #endif
       syncTimeWithNTP();
     }
 
-    // Update moon position 3× per day at scheduled times
-    if (moonData.isCalibrated) {
-      unsigned long currentEpoch = now.unixtime();
-      
-      static unsigned long lastMoonCheck = 0;
-
-      // Only check for scheduled update once per minute
-      if (currentEpoch - lastMoonCheck >= 60) {
-        lastMoonCheck = currentEpoch;
-      
-        // Now check if we're at scheduled time
-        int hour = now.hour();
-        int minute = now.minute();
-      
-        // Check scheduled times: 2:05, 10:05, 18:05
-        if (minute == 5 && (hour == 2 || hour == 10 || hour == 18)) {
-          static unsigned long lastMoonUpdateTime = 0;
-        
-          if (currentEpoch - lastMoonUpdateTime > 3600) {  // Min 1h between updates
-            lastMoonUpdateTime = currentEpoch;
-
+    // Update moon position at scheduled time 5:05
+    // ===========================================
+    if (moonData.isCalibrated && now.hour() == 5 && now.minute() == 5 && now.second() == 0) {
 #if DEBUG_MODE
-  Serial.println("[MOON] === Scheduled Update ===");
+      Serial.println("[MOON] === Scheduled Update ===");
 #endif
-
-            // Check for new moon cycle and resync with Meeus if needed
-            if (checkAndIncrementMoonCycle(currentEpoch)) {
+            
+      // Update moon position
+      if (updateMoonPosition(now.unixtime())) {
 #if DEBUG_MODE
-  Serial.println("[MOON] New moon cycle - Meeus resync complete");
+        Serial.print("[MOON] Phase: ");
+        Serial.println(getMoonPhaseName(moonData.phase));
 #endif
-            }
-      
-            // Update moon position
-            if (updateMoonPosition(currentEpoch)) {
-#if DEBUG_MODE
-  Serial.print("[MOON] Phase: ");
-  Serial.println(getMoonPhaseName(moonData.phase));
-#endif
-            }
-      
-            // Check if monthly recalibration is needed
-            if (checkAndRecalibrate(currentEpoch)) {
-#if DEBUG_MODE
-  Serial.println("[MOON] Monthly recalibration completed");
-#endif
-            }
-          }
-        }
       }
     }
 
+#if DEBUG_MODE
     // Debug output every 10 seconds
     static unsigned short lastDebugSecond = 99;
     if (now.second() % 10 == 0 && now.second() != lastDebugSecond) {
       lastDebugSecond = now.second();
     
-#if DEBUG_MODE
-  Serial.println(); // Saut de ligne pour séparer
-  Serial.print("Time: ");
-  printDateTime(now);
-  Serial.println();
-  Serial.print("Mode: ");
-  Serial.print(currentDisplayMode);
-  Serial.print(" | LCD: ");
-  Serial.print(lcdBacklightOn ? "ON" : "OFF");
-  Serial.println();
-  Serial.print("Indoor: ");
-  Serial.print(indoorData.temperature, 1);
-  Serial.print("°C / ");
-  Serial.print(indoorData.humidity, 1);
-  Serial.println("%");
-  Serial.print("Outdoor: ");
-  Serial.print(outdoorData.temperature, 1);
-  Serial.print("°C / ");
-  Serial.print(outdoorData.humidity, 1);
-  Serial.println("%");
-  Serial.print("Air Quality: ");
-  Serial.print(airQuality.estimatedAQI);
-  Serial.print(" (");
-  Serial.print(airQuality.quality);
-  Serial.println(")");
-#endif
-    
+      Serial.println(); // Saut de ligne pour séparer
+      Serial.print("Time: ");
+      printDateTime(now);
+      Serial.println();
+      Serial.print("Mode: ");
+      Serial.print(currentDisplayMode);
+      Serial.print(" | LCD: ");
+      Serial.print(lcdBacklightOn ? "ON" : "OFF");
+      Serial.println();
+      Serial.print("Indoor: ");
+      Serial.print(indoorData.temperature, 1);
+      Serial.print("°C / ");
+      Serial.print(indoorData.humidity, 1);
+      Serial.println("%");
+      Serial.print("Outdoor: ");
+      Serial.print(outdoorData.temperature, 1);
+      Serial.print("°C / ");
+      Serial.print(outdoorData.humidity, 1);
+      Serial.println("%");
+      Serial.print("Air Quality: ");
+      Serial.print(airQuality.estimatedAQI);
+      Serial.print(" (");
+      Serial.print(airQuality.quality);
+      Serial.println(")");
+
       // Data logging stats
       DataLogStats stats = getLogStats();
-#if DEBUG_MODE
-  Serial.print("Data: Buffer=");
-  Serial.print(stats.bufferCount);
-  Serial.print("/");
-  Serial.print(MAX_DATA_POINTS);
-  Serial.print(" | MQTT=");
-  Serial.println(stats.mqttConnected ? "CONNECTED" : "DISCONNECTED");
-  Serial.println("---");
-#endif    
+      Serial.print("Data: Buffer=");
+      Serial.print(stats.bufferCount);
+      Serial.print("/");
+      Serial.print(MAX_DATA_POINTS);
+      Serial.print(" | MQTT=");
+      Serial.println(stats.mqttConnected ? "CONNECTED" : "DISCONNECTED");
+      Serial.println("---");
     }
+#endif    
   }
 
   // Handle animation
+  // ================
   if (isAnimationActive) {
     if (millis() - lastAnimationUpdate >= 50) {
       if (!updateAnimation()) {

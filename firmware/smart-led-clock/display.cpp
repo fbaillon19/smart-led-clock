@@ -3,8 +3,8 @@
  * @brief LCD display management implementation
  * 
  * @author F. Baillon
- * @version 1.0.0
- * @date January 2025
+ * @version 1.1.0
+ * @date November 2025
  * @license MIT License
  * 
  * Copyright (c) 2025 F. Baillon

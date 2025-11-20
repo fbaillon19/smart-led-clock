@@ -3,8 +3,8 @@
  * @brief Moon Phase Display Module - Implementation
  * 
  * @author F. Baillon
- * @version 1.0.0
- * @date January 2025
+ * @version 1.1.0
+ * @date November 2025
  * @license MIT License
  */
 
@@ -170,6 +170,7 @@ bool initMoon() {
     
     delay(10);
   }
+  button.reset();     // Reset current state
   
   if (!clicked) {
     DEBUG_PRINTLN("[MOON] ✗ Button timeout - continuing anyway");
@@ -446,6 +447,11 @@ bool updateMoonPosition(unsigned long currentEpoch) {
   moonData.phase = calculateMoonPhase(currentEpoch);
   moonData.exactPhase = exactPhase;
   moonData.illumination = calculateMoonIllumination(currentEpoch);
+      
+  // Check if monthly recalibration is needed
+  if (checkAndRecalibrate(currentEpoch)) {
+    DEBUG_PRINTLN("[MOON] Monthly recalibration completed");
+  }
   
   return true;
 }
@@ -846,58 +852,6 @@ bool checkAndIncrementMoonCycle(unsigned long currentEpoch) {
   return false;
 }
 
-/**
- * @brief Check if it's time for scheduled moon update
- * 
- * Moon position updates occur 3 times per day at specific times:
- * - 02:05 (2:05 AM) - Night update (preferred, no clock interference)
- * - 10:05 (10:05 AM) - Morning update
- * - 18:05 (6:05 PM) - Evening update
- * 
- * Each update results in approximately 4° of rotation
- * (24h / 3 = 8h, 360° / 29.53 days = 12.2°/day, 12.2° / 3 = 4.07°)
- * 
- * The 5-minute offset (HH:05) avoids conflicts with other scheduled
- * operations like NTP sync or sensor readings.
- * 
- * @param currentEpoch Current Unix timestamp
- * @return true if current time matches one of the update schedules
- */
-/*bool isScheduledUpdateTime(unsigned long currentEpoch) {
-  // Convert epoch to date/time
-  int year, month, day, hour, minute, second;
-  epochToDateTime(currentEpoch, year, month, day, hour, minute, second);
-  
-  // Check if we're at one of the scheduled update times
-  if (minute == MOON_UPDATE_MINUTE && second == 0) {
-    if (hour == MOON_UPDATE_HOUR_1 ||   // 2:05 AM
-        hour == MOON_UPDATE_HOUR_2 ||   // 10:05 AM
-        hour == MOON_UPDATE_HOUR_3) {   // 6:05 PM
-      return true;
-    }
-  }
-  
-  return false;
-}
-*/
-
-/**
- * @brief Initialize or update next new moon reference
- * 
- * Convenience function to manually trigger Meeus calculation.
- * Normally called only at startup; regular updates use checkAndIncrementMoonCycle().
- * 
- * @param currentEpoch Current Unix timestamp
- * @return true if Meeus calculation was performed
- */
-bool updateNextNewMoon(unsigned long currentEpoch) {
-  moonData.nextNewMoonEpoch = calculateNextNewMoonMeeus(currentEpoch);
-  moonData.lastMeeusSync = currentEpoch;
-  moonData.meeusInitialized = true;
-  
-  return true;
-}
-
 // ==========================================
 // DATE/TIME CONVERSION UTILITIES
 // ==========================================
@@ -1042,53 +996,6 @@ int exactPhaseToSteps(float exactPhase) {
 
 MoonPhaseData& getMoonData() {
   return moonData;
-}
-
-MoonCalibrationResult& getLastCalibrationResult() {
-  return lastCalibResult;
-}
-
-void printMoonInfo(unsigned long currentEpoch) {
-  DEBUG_PRINTLN("=== Moon Phase Information ===");
-  
-  DEBUG_PRINT("Lunar Age: ");
-  DEBUG_PRINT(String(moonData.lunarAge, 2));
-  DEBUG_PRINT(" / ");
-  DEBUG_PRINT(String(MOON_LUNAR_CYCLE_DAYS, 2));
-  DEBUG_PRINTLN(" days");
-  
-  DEBUG_PRINT("Phase: ");
-  DEBUG_PRINT(moonData.phase);
-  DEBUG_PRINT(" - ");
-  DEBUG_PRINTLN(getMoonPhaseName(moonData.phase));
-  
-  DEBUG_PRINT("Exact Phase: ");
-  DEBUG_PRINT(String(moonData.exactPhase, 3));
-  DEBUG_PRINTLN(" / 8.0");
-  
-  DEBUG_PRINT("Illumination: ");
-  DEBUG_PRINT(String(moonData.illumination, 1));
-  DEBUG_PRINTLN("%");
-  
-  DEBUG_PRINT("Motor Position: ");
-  DEBUG_PRINT(moonData.currentSteps);
-  DEBUG_PRINT(" / ");
-  DEBUG_PRINT(MOON_STEPS_PER_REV);
-  DEBUG_PRINTLN(" steps");
-  
-  DEBUG_PRINT("Calibrated: ");
-  DEBUG_PRINTLN(moonData.isCalibrated ? "YES" : "NO");
-  
-  if (moonData.isCalibrated) {
-    DEBUG_PRINT("Days since last calibration: ");
-    DEBUG_PRINTLN(String(daysSinceLastCalibration(currentEpoch), 1));
-  }
-  
-  DEBUG_PRINTLN("==============================");
-}
-
-bool isMoonCalibrated() {
-  return moonData.isCalibrated;
 }
 
 float daysSinceLastCalibration(unsigned long currentEpoch) {

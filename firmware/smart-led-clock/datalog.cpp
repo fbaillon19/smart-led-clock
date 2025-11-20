@@ -3,8 +3,8 @@
  * @brief Data logging implementation
  * 
  * @author F. Baillon
- * @version 1.0.0
- * @date January 2025
+ * @version 1.1.0
+ * @date November 2025
  * @license MIT License
  * 
  * Copyright (c) 2025 F. Baillon
@@ -46,7 +46,7 @@ void initDataLog(WiFiClient& wifiClient) {
   
   // Configure MQTT client avec la variable globale
   mqttClient.setClient(mqttWifiClient);
-  mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
+  mqttClient.setServer(mqttServer, atoi(mqttPort));
 
   mqttClient.setBufferSize(512);
   DEBUG_PRINTLN("MQTT buffer size set to 512 bytes");
@@ -56,9 +56,9 @@ void initDataLog(WiFiClient& wifiClient) {
   mqttClient.setKeepAlive(15);
   
   DEBUG_PRINT("MQTT server configured: ");
-  DEBUG_PRINT(MQTT_SERVER);
+  DEBUG_PRINT(mqttServer);
   DEBUG_PRINT(":");
-  DEBUG_PRINTLN(MQTT_PORT);
+  DEBUG_PRINTLN(mqttPort);
   
   // Initialize buffer
   bufferWriteIndex = 0;
@@ -91,7 +91,7 @@ void initDataLog(WiFiClient& wifiClient) {
 void handleDataLog() {
   unsigned long currentMillis = millis();
   
-  // ===== DEBUG =====
+#if DEBUG_MODE
   static unsigned long lastDebugLog = 0;
   if (currentMillis - lastDebugLog >= 10000) {
     DEBUG_PRINT("handleDataLog: wifiConnected=");
@@ -104,7 +104,7 @@ void handleDataLog() {
     DEBUG_PRINTLN(currentMillis - lastMQTTAttempt);
     lastDebugLog = currentMillis;
   }
-  // =================
+#endif
   
   // Handle MQTT connection
   if (wifiConnected()) {
@@ -117,9 +117,9 @@ void handleDataLog() {
         lastMQTTAttempt = currentMillis;
         
         DEBUG_PRINT("Connecting to MQTT broker ");
-        DEBUG_PRINT(MQTT_SERVER);
+        DEBUG_PRINT(mqttServer);
         DEBUG_PRINT(":");
-        DEBUG_PRINT(MQTT_PORT);
+        DEBUG_PRINT(mqttPort);
         DEBUG_PRINT("...");
         
         // Set flag to prevent I2C access during connection
@@ -128,7 +128,7 @@ void handleDataLog() {
         unsigned long startTime = millis();
         
         // Tenter la connexion
-        bool connected = mqttClient.connect(MQTT_CLIENT_ID, MQTT_USERNAME, MQTT_PASSWORD);
+        bool connected = mqttClient.connect(mqttClientId, mqttUsername, mqttPassword);
         
         // Clear flag
         mqttBusy = false;

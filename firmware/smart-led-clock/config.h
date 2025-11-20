@@ -7,8 +7,8 @@
  * or adjusting system parameters.
  * 
  * @author F. Baillon
- * @version 1.0.0
- * @date January 2025
+ * @version 1.1.0
+ * @date November 2025
  * @license MIT License
  * 
  * Copyright (c) 2025 F. Baillon
@@ -99,7 +99,9 @@
 // ==========================================
 // WIFI CONFIGURATION
 // ==========================================
-#define MAX_WIFI_ATTEMPT        300
+// Activer/désactiver Web Server temporairement
+#define WEB_SERVER_ENABLED      true    // Set to true to activate and to false to deactivate.
+#define MAX_WIFI_ATTEMPTS       300     // Wait for 3 seconds
 
 // ==========================================
 // SENSOR CONFIGURATION
@@ -111,41 +113,12 @@
 // DATA LOGGING CONFIGURATION
 // ==========================================
 // Activer/désactiver MQTT temporairement
-#define MQTT_ENABLED            true    // ← Mettre false pour désactiver
+#define MQTT_ENABLED            true    // Set to true to activate and to false to deactivate.
 
 // Réduire les timeouts
 #define MQTT_CONNECT_TIMEOUT    2000    // 2 secondes
 #define MQTT_SOCKET_TIMEOUT     2       // 2 secondes
 #define MQTT_RETRY_INTERVAL     30000   // Essayer toutes les 30s au lieu de 10min
-
-/**
- * Adaptive logging intervals based on WiFi status:
- * - WiFi OK: Log every 2 minutes and send immediately (no buffer storage)
- * - WiFi DOWN: Log every 5 minutes and store in RAM buffer (48h capacity)
- */
-#define DATALOG_INTERVAL_WIFI_OK    120000  ///< 2 minutes when WiFi connected
-#define DATALOG_INTERVAL_WIFI_DOWN  300000  ///< 5 minutes when WiFi down
-
-/**
- * Buffer configuration for offline data storage
- * Size: 576 points * 14 bytes = 8064 bytes (~8 KB RAM)
- * Capacity: 48 hours at 5-minute intervals
- */
-#define MAX_DATA_POINTS             576     ///< Maximum data points in buffer
-
-/**
- * MQTT configuration for data transmission
- */
-#define MQTT_SERVER                 "192.168.1.21"  ///< MQTT broker IP address
-#define MQTT_PORT                   1883            ///< MQTT broker port
-#define MQTT_CLIENT_ID              "smart-led-clock"
-#define MQTT_USERNAME               "smart-led-clock"
-#define MQTT_PASSWORD               "sm@rt_l3d" 
-#define MQTT_TOPIC_DATA             "home/clock/sensors"      ///< Real-time data topic
-#define MQTT_TOPIC_BUFFER           "home/clock/buffer"       ///< Buffered data topic
-#define MQTT_TOPIC_STATUS           "home/clock/status"       ///< Status topic
-#define MQTT_RETRY_INTERVAL         600000  ///< Retry MQTT connection every 10 min
-#define MQTT_CHUNK_SIZE             10      ///< Send 10 points per MQTT message
 
 // ==========================================
 // NTP & TIME CONFIGURATION
